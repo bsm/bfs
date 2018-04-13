@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"path/filepath"
+	"path"
 	"sync"
 	"time"
 )
@@ -29,7 +29,7 @@ func (b *InMem) Glob(_ context.Context, pattern string) ([]string, error) {
 
 	var matches []string
 	for key := range b.objects {
-		if ok, err := filepath.Match(pattern, key); err != nil {
+		if ok, err := path.Match(pattern, key); err != nil {
 			return nil, err
 		} else if ok {
 			matches = append(matches, key)
