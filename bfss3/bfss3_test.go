@@ -108,6 +108,16 @@ var _ = Describe("Bucket", func() {
 		Expect(string(data[:8])).To(Equal("TESTDATA"))
 	})
 
+	It("should remove", func() {
+		Expect(writeObject("path/to/first.txt")).To(Succeed())
+
+		Expect(subject.Glob(ctx, "*/*/*")).To(HaveLen(1))
+		Expect(subject.Remove(ctx, "path/to/first.txt")).To(Succeed())
+		Expect(subject.Glob(ctx, "*/*/*")).To(BeEmpty())
+
+		Expect(subject.Remove(ctx, "missing")).To(Succeed())
+	})
+
 })
 
 // ------------------------------------------------------------------------
