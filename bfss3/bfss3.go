@@ -43,6 +43,7 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 	if cfg != nil {
 		*config = *cfg
 	}
+	config.norm()
 
 	sess, err := session.NewSession(&config.AWS)
 	if err != nil {
@@ -74,9 +75,16 @@ func (b *s3Bucket) withPrefix(name string) string {
 
 // Glob implements bfs.Bucket.
 func (b *s3Bucket) Glob(ctx context.Context, pattern string) ([]string, error) {
-	var matches []string
+	// quick sanity check
+	if _, err := path.Match(pattern, ""); err != nil {
+		return nil, err
+	}
 
-	eachPage := func(page *s3.ListObjectsV2Output, _ bool) bool {
+	var matches []string
+	err := b.ListObjectsV2PagesWithContext(ctx, &s3.ListObjectsV2Input{
+		Bucket: aws.String(b.bucket),
+		Prefix: aws.String(b.config.Prefix),
+	}, func(page *s3.ListObjectsV2Output, _ bool) bool {
 		for _, obj := range page.Contents {
 			name := b.stripPrefix(aws.StringValue(obj.Key))
 
@@ -87,12 +95,7 @@ func (b *s3Bucket) Glob(ctx context.Context, pattern string) ([]string, error) {
 			}
 		}
 		return true
-	}
-
-	err := b.ListObjectsV2PagesWithContext(ctx, &s3.ListObjectsV2Input{
-		Bucket: aws.String(b.bucket),
-		Prefix: aws.String(b.config.Prefix),
-	}, eachPage)
+	})
 	if err != nil {
 		return nil, err
 	}
