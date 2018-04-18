@@ -74,32 +74,17 @@ func (b *s3Bucket) withPrefix(name string) string {
 }
 
 // Glob implements bfs.Bucket.
-func (b *s3Bucket) Glob(ctx context.Context, pattern string) ([]string, error) {
+func (b *s3Bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	// quick sanity check
 	if _, err := path.Match(pattern, ""); err != nil {
 		return nil, err
 	}
 
-	var matches []string
-	err := b.ListObjectsV2PagesWithContext(ctx, &s3.ListObjectsV2Input{
-		Bucket: aws.String(b.bucket),
-		Prefix: aws.String(b.config.Prefix),
-	}, func(page *s3.ListObjectsV2Output, _ bool) bool {
-		for _, obj := range page.Contents {
-			name := b.stripPrefix(aws.StringValue(obj.Key))
-
-			if ok, err := path.Match(pattern, name); err != nil {
-				return false
-			} else if ok {
-				matches = append(matches, name)
-			}
-		}
-		return true
-	})
-	if err != nil {
-		return nil, err
-	}
-	return matches, nil
+	return &iterator{
+		parent:  b,
+		ctx:     ctx,
+		pattern: pattern,
+	}, nil
 }
 
 // Head implements bfs.Bucket.
@@ -239,4 +224,84 @@ func (r *response) Read(p []byte) (n int, err error) {
 	}
 	r.ContentLength -= int64(n)
 	return
+}
+
+// --------------------------------------------------------------------
+
+type iterator struct {
+	parent  *s3Bucket
+	ctx     context.Context
+	pattern string
+	token   *string
+
+	err  error
+	last bool // indicates last page
+	pos  int
+	page []string
+}
+
+func (i *iterator) Close() error {
+	i.last = true
+	i.pos = len(i.page)
+	return nil
+}
+
+func (i *iterator) Name() string {
+	if i.pos < len(i.page) {
+		return i.page[i.pos]
+	}
+	return ""
+}
+
+func (i *iterator) Next() bool {
+	if i.err != nil {
+		return false
+	}
+
+	if i.pos++; i.pos < len(i.page) {
+		return true
+	}
+
+	if i.last {
+		return false
+	}
+
+	if err := i.fetchNextPage(); err != nil {
+		i.err = err
+		return false
+	}
+	return i.Next()
+}
+
+func (i *iterator) Error() error { return i.err }
+
+func (i *iterator) fetchNextPage() error {
+	i.page = i.page[:0]
+	i.pos = -1
+
+	res, err := i.parent.ListObjectsV2WithContext(i.ctx, &s3.ListObjectsV2Input{
+		Bucket:            aws.String(i.parent.bucket),
+		Prefix:            aws.String(i.parent.config.Prefix),
+		ContinuationToken: i.token,
+	})
+	if err != nil {
+		return err
+	}
+
+	i.token = res.NextContinuationToken
+	i.last = i.token == nil
+
+	for _, obj := range res.Contents {
+		if obj == nil {
+			continue
+		}
+
+		name := i.parent.stripPrefix(aws.StringValue(obj.Key))
+		if ok, err := path.Match(i.pattern, name); err != nil {
+			return err
+		} else if ok {
+			i.page = append(i.page, name)
+		}
+	}
+	return nil
 }

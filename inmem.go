@@ -23,7 +23,7 @@ func NewInMem() *InMem {
 }
 
 // Glob implements Bucket.
-func (b *InMem) Glob(_ context.Context, pattern string) ([]string, error) {
+func (b *InMem) Glob(_ context.Context, pattern string) (Iterator, error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -35,7 +35,7 @@ func (b *InMem) Glob(_ context.Context, pattern string) ([]string, error) {
 			matches = append(matches, key)
 		}
 	}
-	return matches, nil
+	return &inMemIterator{entries: matches, pos: -1}, nil
 }
 
 // Head implements Bucket.
@@ -116,5 +116,28 @@ type inMemWriter struct {
 
 func (w *inMemWriter) Close() error {
 	w.bucket.store(w.name, w.Bytes())
+	return nil
+}
+
+type inMemIterator struct {
+	entries []string
+	pos     int
+}
+
+func (i *inMemIterator) Next() bool {
+	i.pos++
+	return i.pos < len(i.entries)
+}
+
+func (i *inMemIterator) Name() string {
+	if i.pos < len(i.entries) {
+		return i.entries[i.pos]
+	}
+	return ""
+}
+func (*inMemIterator) Error() error { return nil }
+
+func (i *inMemIterator) Close() error {
+	i.pos = len(i.entries)
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/bsm/bfs"
-	"google.golang.org/api/iterator"
+	giterator "google.golang.org/api/iterator"
 )
 
 type gsBucket struct {
@@ -60,28 +60,20 @@ func (b *gsBucket) withPrefix(name string) string {
 }
 
 // Glob implements bfs.Bucket.
-func (b *gsBucket) Glob(ctx context.Context, pattern string) ([]string, error) {
-	var matches []string
+func (b *gsBucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
+	// quick sanity check
+	if _, err := path.Match(pattern, ""); err != nil {
+		return nil, err
+	}
 
 	iter := b.bucket.Objects(ctx, &storage.Query{
 		Prefix: b.config.Prefix,
 	})
-	for {
-		obj, err := iter.Next()
-		if err == iterator.Done {
-			break
-		} else if err != nil {
-			return nil, err
-		}
-
-		name := b.stripPrefix(obj.Name)
-		if ok, err := path.Match(pattern, name); err != nil {
-			return nil, err
-		} else if ok {
-			matches = append(matches, name)
-		}
-	}
-	return matches, nil
+	return &iterator{
+		parent:  b,
+		iter:    iter,
+		pattern: pattern,
+	}, nil
 }
 
 // Head implements bfs.Bucket.
@@ -132,4 +124,47 @@ func normError(err error) error {
 		return bfs.ErrNotFound
 	}
 	return err
+}
+
+// --------------------------------------------------------------------
+
+type iterator struct {
+	parent  *gsBucket
+	iter    *storage.ObjectIterator
+	pattern string
+	current string
+	err     error
+}
+
+func (*iterator) Close() error   { return nil }
+func (i *iterator) Name() string { return i.current }
+
+func (i *iterator) Next() bool {
+	if i.err != nil {
+		return false
+	}
+
+	for {
+		obj, err := i.iter.Next()
+		if err != nil {
+			i.err = err
+			return false
+		}
+
+		name := i.parent.stripPrefix(obj.Name)
+		if ok, err := path.Match(i.pattern, name); err != nil {
+			i.err = err
+			return false
+		} else if ok {
+			i.current = name
+			return true
+		}
+	}
+}
+
+func (i *iterator) Error() error {
+	if i.err != giterator.Done {
+		return i.err
+	}
+	return nil
 }

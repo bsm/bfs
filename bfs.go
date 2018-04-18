@@ -16,7 +16,7 @@ var ErrNotFound = errors.New("bfs: object not found")
 // Bucket is an abstract storage bucket.
 type Bucket interface {
 	// Glob lists the files mathing a glob pattern.
-	Glob(ctx context.Context, pattern string) ([]string, error)
+	Glob(ctx context.Context, pattern string) (Iterator, error)
 
 	// Head returns an object's meta Info.
 	Head(ctx context.Context, name string) (*MetaInfo, error)
@@ -39,4 +39,16 @@ type MetaInfo struct {
 	Name    string    // base name of the object
 	Size    int64     // length of the content in bytes
 	ModTime time.Time // modification time
+}
+
+// Iterator iterates over objects
+type Iterator interface {
+	// Next advances the cursor to the next position.
+	Next() bool
+	// Name returns the name at the current cursor position.
+	Name() string
+	// Error returns the last iterator error, if any.
+	Error() error
+	// Close closes the iterator, should always be deferred.
+	Close() error
 }
