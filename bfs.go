@@ -52,3 +52,7 @@ type Iterator interface {
 	// Close closes the iterator, should always be deferred.
 	Close() error
 }
+
+type supportsCopying interface {
+	Copy(context.Context, string, string) error
+}

@@ -114,6 +114,14 @@ func (b *gsBucket) Remove(ctx context.Context, name string) error {
 	return err
 }
 
+// Copy supports copying of objects within the bucket.
+func (b *gsBucket) Copy(ctx context.Context, src, dst string) error {
+	_, err := b.bucket.Object(b.withPrefix(dst)).CopierFrom(
+		b.bucket.Object(b.withPrefix(src)),
+	).Run(ctx)
+	return err
+}
+
 // Close implements bfs.Bucket.
 func (*gsBucket) Close() error { return nil }
 

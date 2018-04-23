@@ -50,7 +50,7 @@ func (b *InMem) Head(_ context.Context, name string) (*MetaInfo, error) {
 
 	return &MetaInfo{
 		Name:    name,
-		Size:    int64(len(obj.data)),
+		Size:    obj.Size(),
 		ModTime: obj.modTime,
 	}, nil
 }
@@ -83,6 +83,18 @@ func (b *InMem) Remove(_ context.Context, name string) error {
 	return nil
 }
 
+// ObjectSizes return a map of object sizes by name
+func (b *InMem) ObjectSizes() map[string]int64 {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	sizes := make(map[string]int64, len(b.objects))
+	for key, obj := range b.objects {
+		sizes[key] = obj.Size()
+	}
+	return sizes
+}
+
 // Close implements Bucket.
 func (*InMem) Close() error { return nil }
 
@@ -101,6 +113,10 @@ func (b *InMem) store(name string, data []byte) {
 type inMemObject struct {
 	data    []byte
 	modTime time.Time
+}
+
+func (o *inMemObject) Size() int64 {
+	return int64(len(o.data))
 }
 
 type inMemReader struct{ *bytes.Reader }

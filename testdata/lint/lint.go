@@ -9,39 +9,13 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-type DefaultsData struct {
+type Data struct {
 	Subject, Readonly bfs.Bucket
 }
 
-func Defaults(data *DefaultsData) func() {
+func Lint(data *Data) func() {
 	var subject, readonly bfs.Bucket
 	var ctx = context.Background()
-
-	writeObject := func(name string) error {
-		o, err := subject.Create(ctx, name)
-		if err != nil {
-			return err
-		}
-		defer o.Close()
-
-		if _, err := o.Write([]byte("TESTDATA")); err != nil {
-			return err
-		}
-		return o.Close()
-	}
-
-	drain := func(iter bfs.Iterator, err error) ([]string, error) {
-		if err != nil {
-			return nil, err
-		}
-		defer iter.Close()
-
-		entries := make([]string, 0)
-		for iter.Next() {
-			entries = append(entries, iter.Name())
-		}
-		return entries, iter.Error()
-	}
 
 	return func() {
 
@@ -55,39 +29,36 @@ func Defaults(data *DefaultsData) func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer blank.Close()
 
-			Expect(drain(subject.Glob(ctx, "*"))).To(BeEmpty())
+			Expect(subject.Glob(ctx, "*")).To(whenDrained(BeEmpty()))
 			Expect(blank.Close()).To(Succeed())
-			Expect(drain(subject.Glob(ctx, "*"))).To(ConsistOf("blank.txt"))
+			Expect(subject.Glob(ctx, "*")).To(whenDrained(ConsistOf("blank.txt")))
 		})
 
 		It("should glob lots of files", func() {
 			if readonly == nil {
 				Skip("test is disabled")
 			}
-
-			entries, err := drain(readonly.Glob(ctx, "*/*"))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(entries)).To(Equal(2121))
+			Expect(readonly.Glob(ctx, "*/*")).To(whenDrained(HaveLen(2121)))
 		})
 
 		It("should glob", func() {
-			Expect(writeObject("path/a/first.txt")).To(Succeed())
-			Expect(writeObject("path/b/second.txt")).To(Succeed())
-			Expect(writeObject("path/a/third.json")).To(Succeed())
+			Expect(writeTestData(subject, "path/a/first.txt")).To(Succeed())
+			Expect(writeTestData(subject, "path/b/second.txt")).To(Succeed())
+			Expect(writeTestData(subject, "path/a/third.json")).To(Succeed())
 
-			Expect(drain(subject.Glob(ctx, ""))).To(BeEmpty())
-			Expect(drain(subject.Glob(ctx, "path/*"))).To(BeEmpty())
-			Expect(drain(subject.Glob(ctx, "path/*/*"))).To(HaveLen(3))
-			Expect(drain(subject.Glob(ctx, "*/*/*"))).To(HaveLen(3))
-			Expect(drain(subject.Glob(ctx, "*/a/*"))).To(HaveLen(2))
-			Expect(drain(subject.Glob(ctx, "*/b/*"))).To(HaveLen(1))
-			Expect(drain(subject.Glob(ctx, "path/*/*.txt"))).To(HaveLen(2))
-			Expect(drain(subject.Glob(ctx, "path/*/[ft]*"))).To(HaveLen(2))
-			Expect(drain(subject.Glob(ctx, "path/*/[ft]*.json"))).To(HaveLen(1))
+			Expect(subject.Glob(ctx, "")).To(whenDrained(BeEmpty()))
+			Expect(subject.Glob(ctx, "path/*")).To(whenDrained(BeEmpty()))
+			Expect(subject.Glob(ctx, "path/*/*")).To(whenDrained(HaveLen(3)))
+			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(3)))
+			Expect(subject.Glob(ctx, "*/a/*")).To(whenDrained(HaveLen(2)))
+			Expect(subject.Glob(ctx, "*/b/*")).To(whenDrained(HaveLen(1)))
+			Expect(subject.Glob(ctx, "path/*/*.txt")).To(whenDrained(HaveLen(2)))
+			Expect(subject.Glob(ctx, "path/*/[ft]*")).To(whenDrained(HaveLen(2)))
+			Expect(subject.Glob(ctx, "path/*/[ft]*.json")).To(whenDrained(HaveLen(1)))
 		})
 
 		It("should head", func() {
-			Expect(writeObject("path/to/first.txt")).To(Succeed())
+			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
 
 			_, err := subject.Head(ctx, "path/to/missing")
 			Expect(err).To(Equal(bfs.ErrNotFound))
@@ -100,7 +71,7 @@ func Defaults(data *DefaultsData) func() {
 		})
 
 		It("should read", func() {
-			Expect(writeObject("path/to/first.txt")).To(Succeed())
+			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
 
 			_, err := subject.Open(ctx, "path/to/missing")
 			Expect(err).To(Equal(bfs.ErrNotFound))
@@ -114,14 +85,51 @@ func Defaults(data *DefaultsData) func() {
 		})
 
 		It("should remove", func() {
-			Expect(writeObject("path/to/first.txt")).To(Succeed())
+			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
 
-			Expect(drain(subject.Glob(ctx, "*/*/*"))).To(HaveLen(1))
+			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(1)))
 			Expect(subject.Remove(ctx, "path/to/first.txt")).To(Succeed())
-			Expect(drain(subject.Glob(ctx, "*/*/*"))).To(BeEmpty())
+			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(BeEmpty()))
 
 			Expect(subject.Remove(ctx, "missing")).To(Succeed())
 		})
 
+		It("should copy", func() {
+			copier, ok := subject.(interface {
+				Copy(context.Context, string, string) error
+			})
+			if !ok {
+				Skip("test is disabled")
+			}
+
+			Expect(writeTestData(subject, "path/to/src.txt")).To(Succeed())
+
+			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(1)))
+			Expect(copier.Copy(ctx, "path/to/src.txt", "path/to/dst.txt")).To(Succeed())
+			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(2)))
+
+			info, err := subject.Head(ctx, "path/to/dst.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Name).To(Equal("path/to/dst.txt"))
+			Expect(info.Size).To(Equal(int64(8)))
+			Expect(info.ModTime).To(BeTemporally("~", time.Now(), time.Second))
+		})
+
 	}
+}
+
+func writeTestData(bucket bfs.Bucket, name string) error {
+	return bfs.WriteObject(bucket, context.Background(), name, []byte("TESTDATA"))
+}
+
+func whenDrained(m OmegaMatcher) OmegaMatcher {
+	return WithTransform(func(iter bfs.Iterator) []string {
+		defer iter.Close()
+
+		entries := make([]string, 0)
+		for iter.Next() {
+			entries = append(entries, iter.Name())
+		}
+		return entries
+	}, m)
 }

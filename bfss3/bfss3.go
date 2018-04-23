@@ -143,6 +143,18 @@ func (b *s3Bucket) Remove(ctx context.Context, name string) error {
 	return normError(err)
 }
 
+// Copy supports copying of objects within the bucket.
+func (b *s3Bucket) Copy(ctx context.Context, src, dst string) error {
+	source := path.Join("/", b.bucket, b.withPrefix(src))
+	_, err := b.CopyObjectWithContext(ctx, &s3.CopyObjectInput{
+		ACL:        aws.String(b.config.ACL),
+		Bucket:     aws.String(b.bucket),
+		CopySource: aws.String(source),
+		Key:        aws.String(b.withPrefix(dst)),
+	})
+	return err
+}
+
 // Close implements bfs.Bucket.
 func (*s3Bucket) Close() error { return nil }
 

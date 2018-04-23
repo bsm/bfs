@@ -19,8 +19,12 @@ func WriteObject(bucket Bucket, ctx context.Context, name string, data []byte) e
 	return w.Close()
 }
 
-// CopyObject is a quick copy helper.
+// CopyObject is a quick helper to copy objects within the same bucket.
 func CopyObject(bucket Bucket, ctx context.Context, src, dst string) error {
+	if cp, ok := bucket.(supportsCopying); ok {
+		return cp.Copy(ctx, src, dst)
+	}
+
 	r, err := bucket.Open(ctx, src)
 	if err != nil {
 		return err

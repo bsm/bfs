@@ -21,7 +21,7 @@ const (
 )
 
 var _ = Describe("Bucket", func() {
-	var data = lint.DefaultsData{}
+	var data = lint.Data{}
 
 	BeforeEach(func() {
 		if os.Getenv("BFSS3_TEST") == "" {
@@ -44,7 +44,7 @@ var _ = Describe("Bucket", func() {
 		data.Readonly = readonly
 	})
 
-	Context("defaults", lint.Defaults(&data))
+	Context("defaults", lint.Lint(&data))
 })
 
 // ------------------------------------------------------------------------
