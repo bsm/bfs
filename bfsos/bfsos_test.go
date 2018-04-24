@@ -1,8 +1,10 @@
 package bfsos_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/bsm/bfs/bfsos"
@@ -13,7 +15,8 @@ import (
 )
 
 const (
-	tmpRoot = "testdata/tmp"
+	tmpRoot     = "testdata/tmp"
+	readonlyDir = "testdata/tmp/readonly"
 )
 
 var _ = Describe("Bucket", func() {
@@ -38,11 +41,16 @@ var _ = Describe("Bucket", func() {
 		subject, err := bfsos.New(rootDir, tmpDir)
 		Expect(err).NotTo(HaveOccurred())
 
+		readonly, err := bfsos.New(readonlyDir, tmpDir)
+		Expect(err).NotTo(HaveOccurred())
+
 		data.Subject = subject
+		data.Readonly = readonly
 	})
 
 	AfterEach(func() {
 		Expect(os.RemoveAll(rootDir)).To(Succeed())
+		Expect(os.RemoveAll(tmpDir)).To(Succeed())
 	})
 
 	Context("defaults", lint.Lint(&data))
@@ -54,6 +62,18 @@ func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "bfs/bfsos")
 }
+
+var _ = BeforeSuite(func() {
+	if os.Getenv("BFSOS_TEST") == "" {
+		return
+	}
+
+	Expect(os.MkdirAll(filepath.Join(readonlyDir, "readonly"), 0755))
+	for i := 1; i <= lint.NumReadonlySamples; i++ {
+		name := filepath.Join(readonlyDir, "readonly", fmt.Sprintf("%06d.txt", i))
+		Expect(ioutil.WriteFile(name, []byte(name), 0644)).To(Succeed())
+	}
+})
 
 var _ = AfterSuite(func() {
 	if os.Getenv("BFSOS_TEST") == "" {

@@ -9,6 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+const NumReadonlySamples = 2121
+
 type Data struct {
 	Subject, Readonly bfs.Bucket
 }
@@ -38,7 +40,7 @@ func Lint(data *Data) func() {
 			if readonly == nil {
 				Skip("test is disabled")
 			}
-			Expect(readonly.Glob(ctx, "*/*")).To(whenDrained(HaveLen(2121)))
+			Expect(readonly.Glob(ctx, "*/*")).To(whenDrained(HaveLen(NumReadonlySamples)))
 		})
 
 		It("should glob", func() {
