@@ -10,9 +10,10 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/bsm/bfs/bfsgs"
 	"github.com/bsm/bfs/testdata/lint"
+	"google.golang.org/api/iterator"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"google.golang.org/api/iterator"
 )
 
 const (

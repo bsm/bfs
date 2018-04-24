@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/bsm/bfs/bfss3"
 	"github.com/bsm/bfs/testdata/lint"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
