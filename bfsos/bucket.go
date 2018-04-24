@@ -12,17 +12,20 @@ import (
 
 // bucket emulates bfs.Bucket behaviour for local file system.
 type bucket struct {
-	root string
+	root   string
+	tmpDir string
 }
 
 // New initiates an bfs.Bucket backed by local file system.
-func New(root string) (bfs.Bucket, error) {
+// tmpDir is used for file atomicity, defaults to standard tmp dir if blank.
+func New(root, tmpDir string) (bfs.Bucket, error) {
 	if root == "" {
 		root = "."
 	}
 
 	return &bucket{
-		root: filepath.Clean(root) + string(filepath.Separator), // root should always have trailing slash to trim file names properly
+		root:   filepath.Clean(root) + string(filepath.Separator), // root should always have trailing slash to trim file names properly
+		tmpDir: tmpDir,
 	}, nil
 }
 
@@ -80,12 +83,7 @@ func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 
 // Create creates/opens a object for writing.
 func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
-	path := b.resolve(name)
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, normError(err)
-	}
-
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	f, err := openAtomicFile(b.resolve(name), b.tmpDir)
 	if err != nil {
 		return nil, normError(err)
 	}

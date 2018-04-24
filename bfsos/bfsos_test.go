@@ -17,7 +17,7 @@ const (
 )
 
 var _ = Describe("Bucket", func() {
-	var tmpDir string
+	var rootDir, tmpDir string
 	var data = lint.Data{}
 
 	BeforeEach(func() {
@@ -28,17 +28,21 @@ var _ = Describe("Bucket", func() {
 		Expect(os.MkdirAll(tmpRoot, 0755)).To(Succeed())
 
 		var err error
-		tmpDir, err = ioutil.TempDir(tmpRoot, "test")
+
+		rootDir, err = ioutil.TempDir(tmpRoot, "test")
 		Expect(err).NotTo(HaveOccurred())
 
-		subject, err := bfsos.New(tmpDir)
+		tmpDir, err = ioutil.TempDir(tmpRoot, "tmp")
+		Expect(err).NotTo(HaveOccurred())
+
+		subject, err := bfsos.New(rootDir, tmpDir)
 		Expect(err).NotTo(HaveOccurred())
 
 		data.Subject = subject
 	})
 
 	AfterEach(func() {
-		Expect(os.RemoveAll(tmpDir)).To(Succeed())
+		Expect(os.RemoveAll(rootDir)).To(Succeed())
 	})
 
 	Context("defaults", lint.Lint(&data))
