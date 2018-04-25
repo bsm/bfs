@@ -1,3 +1,4 @@
+// Package bfss3 abstracts Amazon S3 bucket.
 package bfss3
 
 import (

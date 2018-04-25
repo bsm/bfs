@@ -1,3 +1,4 @@
+// Package bfsgs abstracts Google Cloud Storage bucket.
 package bfsgs
 
 import (
@@ -16,7 +17,7 @@ type gsBucket struct {
 	config *Config
 }
 
-// Config is passed to New to configure the S3 connection.
+// Config is passed to New to configure the Google Cloud Storage connection.
 type Config struct {
 	Prefix string // an optional path prefix
 }
