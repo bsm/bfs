@@ -85,10 +85,7 @@ func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error
 // Remove removes a object.
 func (b *bucket) Remove(ctx context.Context, name string) error {
 	err := os.Remove(b.resolve(name))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return nil
