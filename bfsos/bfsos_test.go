@@ -13,19 +13,36 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var (
+	tempDir     string
+	readonlyDir string
+)
+
 func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "bfs/bfsos")
 }
 
-// ------------------------------------------------------------------------
+var _ = BeforeSuite(func() {
+	var err error
+	tempDir, err = ioutil.TempDir("", "bfsos")
+	Expect(err).NotTo(HaveOccurred())
 
-func populateReadonlyFiles(dir string) {
-	subdir := filepath.Join(dir, "subdir")
+	readonlyDir = filepath.Join(tempDir, "readonly")
+	Expect(os.MkdirAll(readonlyDir, 0777)).To(Succeed())
+
+	subdir := filepath.Join(readonlyDir, "subdir")
 	Expect(os.MkdirAll(subdir, 0777)).To(Succeed())
 
 	for i := 1; i <= lint.NumReadonlySamples; i++ {
 		name := filepath.Join(subdir, fmt.Sprintf("%06d.txt", i))
 		Expect(ioutil.WriteFile(name, []byte(name), 0777)).To(Succeed())
 	}
-}
+
+})
+
+var _ = AfterSuite(func() {
+	if tempDir != "" {
+		Expect(os.RemoveAll(tempDir)).To(Succeed())
+	}
+})

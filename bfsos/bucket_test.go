@@ -1,7 +1,6 @@
 package bfsos_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -14,30 +13,18 @@ import (
 
 var _ = Describe("Bucket", func() {
 	var (
-		tmp  string
-		data lint.Data
+		subjectDir string
+		data       lint.Data
 	)
 
 	BeforeEach(func() {
-		var err error
-		tmp, err = ioutil.TempDir("", "bfsos")
-		Expect(err).NotTo(HaveOccurred())
-
-		subjectDir := filepath.Join(tmp, "subject")
+		subjectDir = filepath.Join(tempDir, "subject")
 		Expect(os.MkdirAll(subjectDir, 0777)).To(Succeed())
 
-		readonlyDir := filepath.Join(tmp, "readonly")
-		Expect(os.MkdirAll(readonlyDir, 0777)).To(Succeed())
-
-		tmpDir := filepath.Join(tmp, "tmp")
-		Expect(os.MkdirAll(tmpDir, 0777)).To(Succeed())
-
-		populateReadonlyFiles(readonlyDir)
-
-		subject, err := bfsos.New(subjectDir, tmpDir)
+		subject, err := bfsos.New(subjectDir, tempDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		readonly, err := bfsos.New(readonlyDir, tmpDir)
+		readonly, err := bfsos.New(readonlyDir, tempDir)
 		Expect(err).NotTo(HaveOccurred())
 
 		data.Subject = subject
@@ -45,8 +32,8 @@ var _ = Describe("Bucket", func() {
 	})
 
 	AfterEach(func() {
-		if tmp != "" {
-			Expect(os.RemoveAll(tmp)).To(Succeed())
+		if subjectDir != "" {
+			Expect(os.RemoveAll(subjectDir)).To(Succeed())
 		}
 	})
 
