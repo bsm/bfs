@@ -33,7 +33,7 @@ func (f *atomicFile) Close() error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(f.name), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(f.name), 0777); err != nil {
 		return err
 	}
 

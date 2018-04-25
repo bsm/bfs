@@ -35,28 +35,20 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		return newIterator(nil), nil
 	}
 
-	matches := make([]string, 0, 10)
-
-	// filepath.Glob is not suitable, returns dirs as well:
-	err := filepath.Walk(b.root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-
-		name := strings.TrimPrefix(path, b.root)
-		if matched, _ := filepath.Match(pattern, name); matched {
-			matches = append(matches, name)
-		}
-		return nil
-	})
+	matches, err := filepath.Glob(b.resolve(pattern))
 	if err != nil {
-		return nil, err
+		return nil, normError(err)
 	}
 
-	return newIterator(matches), nil
+	files := matches[:0]
+	for _, match := range matches {
+		if fi, err := os.Stat(match); err != nil {
+			return nil, normError(err)
+		} else if fi.Mode().IsRegular() {
+			files = append(files, strings.TrimPrefix(match, b.root))
+		}
+	}
+	return newIterator(files), nil
 }
 
 // Head returns an object's meta Info.
@@ -93,7 +85,10 @@ func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error
 // Remove removes a object.
 func (b *bucket) Remove(ctx context.Context, name string) error {
 	err := os.Remove(b.resolve(name))
-	if err != nil && os.IsExist(err) {
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return err
 	}
 	return nil
@@ -102,32 +97,6 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 // Close closes the bucket.
 func (b *bucket) Close() error {
 	return nil // noop
-}
-
-// Copy supports copying of objects within the bucket.
-func (b *bucket) Copy(ctx context.Context, srcName, dstName string) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	src, err := b.Open(ctx, srcName)
-	if err != nil {
-		cancel()
-		return err
-	}
-	defer src.Close()
-
-	dst, err := b.Create(ctx, dstName)
-	if err != nil {
-		cancel()
-		return err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, src); err != nil {
-		cancel()
-		return normError(err)
-	}
-	return normError(dst.Close())
 }
 
 // resolve returns full safely rooted path.

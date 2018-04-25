@@ -1,12 +1,7 @@
 package bfsos
 
-import (
-	"sync"
-)
-
 // iterator implements an iterator over file path list.
 type iterator struct {
-	mutex sync.Mutex
 	names []string // hold relative (non-rooted) file names/paths
 	index int
 }
@@ -23,18 +18,12 @@ func newIterator(names []string) *iterator {
 
 // Next advances the cursor to the next position.
 func (it *iterator) Next() bool {
-	it.mutex.Lock()
-	defer it.mutex.Unlock()
-
 	it.index++
 	return it.isValid()
 }
 
 // Name returns the name at the current cursor position.
 func (it *iterator) Name() string {
-	it.mutex.Lock()
-	defer it.mutex.Unlock()
-
 	if it.isValid() {
 		return it.names[it.index]
 	}
@@ -48,9 +37,6 @@ func (it *iterator) Error() error {
 
 // Close closes the iterator, should always be deferred.
 func (it *iterator) Close() error {
-	it.mutex.Lock()
-	defer it.mutex.Unlock()
-
 	it.names = nil
 	return nil
 }
