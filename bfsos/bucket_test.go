@@ -19,10 +19,6 @@ var _ = Describe("Bucket", func() {
 	)
 
 	BeforeEach(func() {
-		if os.Getenv("BFSOS_TEST") == "" {
-			Skip("test is disabled, enable via BFSOS_TEST")
-		}
-
 		var err error
 		tmp, err = ioutil.TempDir("", "bfsos")
 		Expect(err).NotTo(HaveOccurred())
