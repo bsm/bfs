@@ -1,4 +1,4 @@
-package bfsos
+package bfsfs
 
 import (
 	"os"

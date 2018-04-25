@@ -1,4 +1,4 @@
-package bfsos
+package bfsfs
 
 import (
 	"io/ioutil"
@@ -15,7 +15,7 @@ type atomicFile struct {
 // openAtomicFile opens atomic file for writing.
 // tmpDir defaults to standard temporary dir if blank.
 func openAtomicFile(name string, tmpDir string) (*atomicFile, error) {
-	f, err := ioutil.TempFile(tmpDir, "bfsos")
+	f, err := ioutil.TempFile(tmpDir, "bfsfs")
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package bfsos
+package bfsfs
 
 // iterator implements an iterator over file path list.
 type iterator struct {

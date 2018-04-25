@@ -1,4 +1,4 @@
-package bfsos_test
+package bfsfs_test
 
 import (
 	"fmt"
@@ -20,12 +20,12 @@ var (
 
 func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "bfs/bfsos")
+	RunSpecs(t, "bfs/bfsfs")
 }
 
 var _ = BeforeSuite(func() {
 	var err error
-	tempDir, err = ioutil.TempDir("", "bfsos")
+	tempDir, err = ioutil.TempDir("", "bfsfs")
 	Expect(err).NotTo(HaveOccurred())
 
 	readonlyDir = filepath.Join(tempDir, "readonly")
