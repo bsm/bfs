@@ -1,8 +1,8 @@
 package bfsfs_test
 
 import (
+	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/bsm/bfs/bfsfs"
 	"github.com/bsm/bfs/testdata/lint"
@@ -13,27 +13,25 @@ import (
 
 var _ = Describe("Bucket", func() {
 	var (
-		subjectDir string
-		data       lint.Data
+		dir  string
+		data lint.Data
 	)
 
 	BeforeEach(func() {
-		subjectDir = filepath.Join(tempDir, "subject")
-		Expect(os.MkdirAll(subjectDir, 0777)).To(Succeed())
+		var err error
 
-		subject, err := bfsfs.New(subjectDir, tempDir)
+		dir, err = ioutil.TempDir("", "bfsfs")
 		Expect(err).NotTo(HaveOccurred())
 
-		readonly, err := bfsfs.New(readonlyDir, tempDir)
+		subject, err := bfsfs.New(dir, "")
 		Expect(err).NotTo(HaveOccurred())
 
 		data.Subject = subject
-		data.Readonly = readonly
 	})
 
 	AfterEach(func() {
-		if subjectDir != "" {
-			Expect(os.RemoveAll(subjectDir)).To(Succeed())
+		if dir != "" {
+			Expect(os.RemoveAll(dir)).To(Succeed())
 		}
 	})
 
