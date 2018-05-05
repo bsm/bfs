@@ -21,7 +21,7 @@ import (
 //     }))
 //   }
 //
-//   func myFunc() {
+//   func main() {
 //     bkt, path, err := bfs.Resolve("s3://...")
 //     checkErr(err)
 //     defer bkt.Close()

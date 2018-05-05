@@ -24,7 +24,7 @@ import (
 //     bfs.Register("file", bfsfs.Resolver("root/dir", tempDir))
 //   }
 //
-//   func myFunc() {
+//   func main() {
 //     bkt, path, err := bfs.Resolve("file://...")
 //     checkErr(err)
 //     defer bkt.Close()

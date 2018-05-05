@@ -40,11 +40,11 @@ func Register(scheme string, resolver Resolver) {
 //
 //   import "github.com/bsm/bfs"
 //
-//   var mem bfs.InMem // so it can be globally accessed
+//   var mem *bfs.InMem // so it can be globally accessed
 //
 //   func init() {
-//     mem = NewInMem()
-//     RegisterBucket("mem", mem)
+//     mem = bfs.NewInMem()
+//     bfs.RegisterBucket("mem", mem)
 //   }
 //
 //   func myFunc() {

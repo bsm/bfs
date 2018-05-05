@@ -23,7 +23,7 @@ import (
 //     }))
 //   }
 //
-//   func myFunc() {
+//   func main() {
 //     bkt, path, err := bfs.Resolve("gs://...")
 //     checkErr(err)
 //     defer bkt.Close()
