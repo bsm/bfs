@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -19,10 +20,14 @@ import (
 	"github.com/bsm/bfs"
 )
 
-type s3Bucket struct {
-	s3iface.S3API
-	bucket string
-	config *Config
+func init() {
+	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
+		q := u.Query()
+		return New(u.Host, &Config{
+			Prefix: q.Get("prefix"),
+			ACL:    q.Get("acl"),
+		})
+	})
 }
 
 // Config is passed to New to configure the S3 connection.
@@ -36,6 +41,12 @@ func (c *Config) norm() {
 	if c.ACL == "" {
 		c.ACL = "bucket-owner-full-control"
 	}
+}
+
+type s3Bucket struct {
+	s3iface.S3API
+	bucket string
+	config *Config
 }
 
 // New initiates an bfs.Bucket backed by S3.

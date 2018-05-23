@@ -4,6 +4,7 @@ package bfsgs
 import (
 	"context"
 	"io"
+	"net/url"
 	"path"
 	"strings"
 
@@ -12,9 +13,13 @@ import (
 	giterator "google.golang.org/api/iterator"
 )
 
-type gsBucket struct {
-	bucket *storage.BucketHandle
-	config *Config
+func init() {
+	bfs.Register("gs", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
+		q := u.Query()
+		return New(ctx, u.Host, &Config{
+			Prefix: q.Get("prefix"),
+		})
+	})
 }
 
 // Config is passed to New to configure the Google Cloud Storage connection.
@@ -22,7 +27,11 @@ type Config struct {
 	Prefix string // an optional path prefix
 }
 
-func (c *Config) norm() {
+func (*Config) norm() {}
+
+type gsBucket struct {
+	bucket *storage.BucketHandle
+	config *Config
 }
 
 // New initiates an bfs.Bucket backed by Google Cloud Storage.
