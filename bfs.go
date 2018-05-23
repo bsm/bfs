@@ -62,7 +62,24 @@ type supportsCopying interface {
 
 // --------------------------------------------------------------------
 
-// Resolve opens a bucket from a URL string.
+var (
+	registry     = map[string]Resolver{}
+	registryLock sync.Mutex
+)
+
+// Resolver constructs a bucket from a URL.
+type Resolver func(context.Context, *url.URL) (Bucket, error)
+
+// Resolve opens a bucket from a URL. Example (from bfs/bfsfs):
+//
+//   bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+//     return bfsfs.New(u.Path, "")
+//   })
+//
+//   u, err := url.Parse("file:///home/user/Documents")
+//   ...
+//   bucket, err := bfs.Resolve(context.TODO(), u)
+//   ...
 func Resolve(ctx context.Context, u *url.URL) (Bucket, error) {
 	registryLock.Lock()
 	resv, ok := registry[u.Scheme]
@@ -74,16 +91,18 @@ func Resolve(ctx context.Context, u *url.URL) (Bucket, error) {
 	return resv(ctx, u)
 }
 
-// Resolver constructs a bucket from a URL.
-type Resolver func(context.Context, *url.URL) (Bucket, error)
-
-var (
-	registry     = map[string]Resolver{}
-	registryLock sync.Mutex
-)
-
-// RegisterProtocol registers a new protocol with a resolver.
-func RegisterProtocol(scheme string, resv Resolver) {
+// Register registers a new protocol with a scheme and a corresponding resolver.
+// Example (from bfs/bfsfs):
+//
+//   bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+//     return bfsfs.New(u.Path, "")
+//   })
+//
+//   u, err := url.Parse("file:///home/user/Documents")
+//   ...
+//   bucket, err := bfs.Resolve(context.TODO(), u)
+//   ...
+func Register(scheme string, resv Resolver) {
 	registryLock.Lock()
 	defer registryLock.Unlock()
 

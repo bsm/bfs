@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	bfs.RegisterProtocol("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
+	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		q := u.Query()
 		return New(u.Host, &Config{
 			Prefix: q.Get("prefix"),

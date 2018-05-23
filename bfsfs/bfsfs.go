@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	bfs.RegisterProtocol("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 		q := u.Query()
 		return New(u.Path, q.Get("tmpdir"))
 	})
