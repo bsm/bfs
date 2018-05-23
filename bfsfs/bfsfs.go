@@ -2,12 +2,21 @@
 package bfsfs
 
 import (
+	"context"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 
 	"github.com/bsm/bfs"
 )
+
+func init() {
+	bfs.RegisterProtocol("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+		q := u.Query()
+		return New(u.Path, q.Get("tmpdir"))
+	})
+}
 
 // normError normalizes error.
 func normError(err error) error {

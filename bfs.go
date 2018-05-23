@@ -5,7 +5,10 @@ package bfs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"net/url"
+	"sync"
 	"time"
 )
 
@@ -55,4 +58,37 @@ type Iterator interface {
 
 type supportsCopying interface {
 	Copy(context.Context, string, string) error
+}
+
+// --------------------------------------------------------------------
+
+// Resolve opens a bucket from a URL string.
+func Resolve(ctx context.Context, u *url.URL) (Bucket, error) {
+	registryLock.Lock()
+	resv, ok := registry[u.Scheme]
+	registryLock.Unlock()
+	if !ok {
+		return nil, fmt.Errorf("bfs: unkown URL scheme %q", u.Scheme)
+	}
+
+	return resv(ctx, u)
+}
+
+// Resolver constructs a bucket from a URL.
+type Resolver func(context.Context, *url.URL) (Bucket, error)
+
+var (
+	registry     = map[string]Resolver{}
+	registryLock sync.Mutex
+)
+
+// RegisterProtocol registers a new protocol with a resolver.
+func RegisterProtocol(scheme string, resv Resolver) {
+	registryLock.Lock()
+	defer registryLock.Unlock()
+
+	if _, exists := registry[scheme]; exists {
+		panic("protocol " + scheme + " already registered")
+	}
+	registry[scheme] = resv
 }
