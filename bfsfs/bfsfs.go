@@ -1,6 +1,6 @@
 // Package bfsfs abstracts local file system.
 //
-// When imported, it registers a global `fs://` scheme resolver and can be used like:
+// When imported, it registers a global `file://` scheme resolver and can be used like:
 //
 //   import (
 //     "github.com/bsm/bfs"
