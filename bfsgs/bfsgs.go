@@ -1,4 +1,23 @@
 // Package bfsgs abstracts Google Cloud Storage bucket.
+//
+// When imported, it registers a global `gs://` scheme resolver and can be used like:
+//
+//   import (
+//     "github.com/bsm/bfs"
+//
+//     _ "github.com/bsm/bfs/bfsgs"
+//   )
+//
+//   func main() {
+//     ctx := context.Background()
+//
+//     u, _ := url.Parse("gs://bucket/path/to/file.ext?prefix=my/prefix")
+//     bucket, _ := bfs.Resolve(ctx, u)
+//
+//     f, _ := bucket.Open(ctx)
+//     ...
+//   }
+//
 package bfsgs
 
 import (

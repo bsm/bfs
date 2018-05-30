@@ -1,4 +1,23 @@
 // Package bfss3 abstracts Amazon S3 bucket.
+//
+// When imported, it registers a global `s3://` scheme resolver and can be used like:
+//
+//   import (
+//     "github.com/bsm/bfs"
+//
+//     _ "github.com/bsm/bfs/bfsgs"
+//   )
+//
+//   func main() {
+//     ctx := context.Background()
+//
+//     u, _ := url.Parse("s3://bucket/path/to/file.ext?prefix=my/prefix&acl=MY_ACL")
+//     bucket, _ := bfs.Resolve(ctx, u)
+//
+//     f, _ := bucket.Open(ctx)
+//     ...
+//   }
+//
 package bfss3
 
 import (
