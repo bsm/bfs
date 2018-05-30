@@ -1,4 +1,23 @@
 // Package bfsfs abstracts local file system.
+//
+// When imported, it registers a global `fs://` scheme resolver and can be used like:
+//
+//   import (
+//     "github.com/bsm/bfs"
+//
+//     _ "github.com/bsm/bfs/bfsfs"
+//   )
+//
+//   func main() {
+//     ctx := context.Background()
+//
+//     u, _ := url.Parse("file://path/to/file.ext?tmpdir=path/to/tmp/dir")
+//     bucket, _ := bfs.Resolve(ctx, u)
+//
+//     f, _ := bucket.Open(ctx)
+//     ...
+//   }
+//
 package bfsfs
 
 import (
