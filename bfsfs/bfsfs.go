@@ -33,7 +33,7 @@ import (
 func init() {
 	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 		q := u.Query()
-		return New(u.Path, q.Get("tmpdir"))
+		return New(u.Host, q.Get("tmpdir"))
 	})
 }
 
