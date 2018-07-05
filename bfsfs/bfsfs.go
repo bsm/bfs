@@ -79,7 +79,7 @@ func (f *atomicFile) Close() error {
 
 	select {
 	case <-f.ctx.Done():
-		return nil
+		return f.ctx.Err()
 	default:
 	}
 

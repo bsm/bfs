@@ -134,7 +134,7 @@ type inMemWriter struct {
 func (w *inMemWriter) Close() error {
 	select {
 	case <-w.ctx.Done():
-		return nil
+		return w.ctx.Err()
 	default:
 	}
 
