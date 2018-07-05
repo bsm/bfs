@@ -77,14 +77,14 @@ func openAtomicFile(ctx context.Context, name string, tmpDir string) (*atomicFil
 func (f *atomicFile) Close() error {
 	defer f.cleanup()
 
+	if err := f.File.Close(); err != nil {
+		return err
+	}
+
 	select {
 	case <-f.ctx.Done():
 		return f.ctx.Err()
 	default:
-	}
-
-	if err := f.File.Close(); err != nil {
-		return err
 	}
 
 	if err := os.MkdirAll(filepath.Dir(f.name), 0777); err != nil {
