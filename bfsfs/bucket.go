@@ -75,7 +75,7 @@ func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 
 // Create creates/opens a object for writing.
 func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
-	f, err := openAtomicFile(b.resolve(name), b.tmpDir)
+	f, err := openAtomicFile(ctx, b.resolve(name), b.tmpDir)
 	if err != nil {
 		return nil, normError(err)
 	}

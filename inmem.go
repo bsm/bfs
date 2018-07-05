@@ -70,8 +70,8 @@ func (b *InMem) Open(_ context.Context, name string) (io.ReadCloser, error) {
 }
 
 // Create implements Bucket.
-func (b *InMem) Create(_ context.Context, name string) (io.WriteCloser, error) {
-	return &inMemWriter{bucket: b, name: name}, nil
+func (b *InMem) Create(ctx context.Context, name string) (io.WriteCloser, error) {
+	return &inMemWriter{ctx: ctx, bucket: b, name: name}, nil
 }
 
 // Remove implements Bucket.
@@ -126,11 +126,18 @@ func (*inMemReader) Close() error { return nil }
 type inMemWriter struct {
 	bytes.Buffer
 
+	ctx    context.Context
 	bucket *InMem
 	name   string
 }
 
 func (w *inMemWriter) Close() error {
+	select {
+	case <-w.ctx.Done():
+		return w.ctx.Err()
+	default:
+	}
+
 	w.bucket.store(w.name, w.Bytes())
 	return nil
 }

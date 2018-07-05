@@ -54,18 +54,21 @@ func normError(err error) error {
 // atomicFile represents a file, that's written only on Close.
 type atomicFile struct {
 	*os.File
+
+	ctx  context.Context
 	name string
 }
 
 // openAtomicFile opens atomic file for writing.
 // tmpDir defaults to standard temporary dir if blank.
-func openAtomicFile(name string, tmpDir string) (*atomicFile, error) {
+func openAtomicFile(ctx context.Context, name string, tmpDir string) (*atomicFile, error) {
 	f, err := ioutil.TempFile(tmpDir, "bfsfs")
 	if err != nil {
 		return nil, err
 	}
 	return &atomicFile{
 		File: f,
+		ctx:  ctx,
 		name: name,
 	}, nil
 }
@@ -76,6 +79,12 @@ func (f *atomicFile) Close() error {
 
 	if err := f.File.Close(); err != nil {
 		return err
+	}
+
+	select {
+	case <-f.ctx.Done():
+		return f.ctx.Err()
+	default:
 	}
 
 	if err := os.MkdirAll(filepath.Dir(f.name), 0777); err != nil {
