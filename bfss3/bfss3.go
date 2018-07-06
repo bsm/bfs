@@ -64,8 +64,7 @@ func (c *Config) norm() {
 
 type s3Bucket struct {
 	s3iface.S3API
-	bucket string
-	config *Config
+	bucket, prefix, acl string
 }
 
 // New initiates an bfs.Bucket backed by S3.
@@ -81,27 +80,29 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 		return nil, err
 	}
 
-	return &s3Bucket{
-		bucket: bucket,
-		config: config,
-		S3API:  s3.New(sess),
-	}, nil
+	return NewWithSession(bucket, config.Prefix, config.ACL, sess), nil
+}
+
+// NewWithSession returns a bfs.Bucket backed by S3 usingn the provided Session
+// for comminication with AWS.
+func NewWithSession(bucket, prefix, acl string, sess *session.Session) bfs.Bucket {
+	return &s3Bucket{s3.New(sess), bucket, prefix, acl}
 }
 
 func (b *s3Bucket) stripPrefix(name string) string {
-	if b.config.Prefix == "" {
+	if b.prefix == "" {
 		return name
 	}
-	name = strings.TrimPrefix(name, b.config.Prefix)
+	name = strings.TrimPrefix(name, b.prefix)
 	name = strings.TrimPrefix(name, "/")
 	return name
 }
 
 func (b *s3Bucket) withPrefix(name string) string {
-	if b.config.Prefix == "" {
+	if b.prefix == "" {
 		return name
 	}
-	return path.Join(b.config.Prefix, name)
+	return path.Join(b.prefix, name)
 }
 
 // Glob implements bfs.Bucket.
@@ -178,7 +179,7 @@ func (b *s3Bucket) Remove(ctx context.Context, name string) error {
 func (b *s3Bucket) Copy(ctx context.Context, src, dst string) error {
 	source := path.Join("/", b.bucket, b.withPrefix(src))
 	_, err := b.CopyObjectWithContext(ctx, &s3.CopyObjectInput{
-		ACL:        aws.String(b.config.ACL),
+		ACL:        aws.String(b.acl),
 		Bucket:     aws.String(b.bucket),
 		CopySource: aws.String(source),
 		Key:        aws.String(b.withPrefix(dst)),
@@ -221,7 +222,7 @@ func (w *writer) Close() (err error) {
 		defer file.Close()
 
 		_, err = w.bucket.PutObjectWithContext(w.ctx, &s3.PutObjectInput{
-			ACL:    aws.String(w.bucket.config.ACL),
+			ACL:    aws.String(w.bucket.acl),
 			Bucket: aws.String(w.bucket.bucket),
 			Key:    aws.String(w.bucket.withPrefix(w.name)),
 			Body:   file,
@@ -324,7 +325,7 @@ func (i *iterator) fetchNextPage() error {
 
 	res, err := i.parent.ListObjectsV2WithContext(i.ctx, &s3.ListObjectsV2Input{
 		Bucket:            aws.String(i.parent.bucket),
-		Prefix:            aws.String(i.parent.config.Prefix),
+		Prefix:            aws.String(i.parent.prefix),
 		ContinuationToken: i.token,
 	})
 	if err != nil {
