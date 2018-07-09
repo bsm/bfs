@@ -39,6 +39,9 @@ import (
 	"github.com/bsm/bfs"
 )
 
+// DefaultACL is the default ACL setting.
+const DefaultACL = "bucket-owner-full-control"
+
 func init() {
 	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		q := u.Query()
@@ -51,15 +54,32 @@ func init() {
 
 // Config is passed to New to configure the S3 connection.
 type Config struct {
-	AWS    aws.Config // native AWS configuration
-	Prefix string     // an optional path prefix
-	ACL    string     // custom ACL, defaults to 'bucket-owner-full-control'
+	// Native AWS configuration, used to create a Session,
+	// unless one is already passed.
+	AWS aws.Config
+	// Custom ACL, defaults to DefaultACL.
+	ACL string
+	// An optional path prefix
+	Prefix string
+	// An optional custom session.
+	// If nil, a new session will be created using the AWS config.
+	Session *session.Session
 }
 
-func (c *Config) norm() {
+func (c *Config) norm() error {
 	if c.ACL == "" {
-		c.ACL = "bucket-owner-full-control"
+		c.ACL = DefaultACL
 	}
+
+	if c.Session == nil {
+		sess, err := session.NewSession(&c.AWS)
+		if err != nil {
+			return err
+		} else {
+			c.Session = sess
+		}
+	}
+	return nil
 }
 
 type s3Bucket struct {
@@ -76,15 +96,10 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 	}
 	config.norm()
 
-	sess, err := session.NewSession(&config.AWS)
-	if err != nil {
-		return nil, err
-	}
-
 	return &s3Bucket{
 		bucket: bucket,
 		config: config,
-		S3API:  s3.New(sess),
+		S3API:  s3.New(config.Session),
 	}, nil
 }
 
