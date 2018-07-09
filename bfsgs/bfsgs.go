@@ -44,7 +44,7 @@ func init() {
 
 // Config is passed to New to configure the Google Cloud Storage connection.
 type Config struct {
-	GCSOpts []option.ClientOption // options for Google API client
+	Options []option.ClientOption // options for Google API client
 	Prefix  string                // an optional path prefix
 }
 
@@ -63,7 +63,7 @@ func New(ctx context.Context, bucket string, cfg *Config) (bfs.Bucket, error) {
 	}
 	config.norm()
 
-	client, err := storage.NewClient(ctx, cfg.GCSOpts...)
+	client, err := storage.NewClient(ctx, cfg.Options...)
 	if err != nil {
 		return nil, err
 	}
