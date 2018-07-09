@@ -30,6 +30,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/bsm/bfs"
 	giterator "google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 )
 
 func init() {
@@ -43,7 +44,8 @@ func init() {
 
 // Config is passed to New to configure the Google Cloud Storage connection.
 type Config struct {
-	Prefix string // an optional path prefix
+	Options []option.ClientOption // options for Google API client
+	Prefix  string                // an optional path prefix
 }
 
 func (*Config) norm() {}
@@ -61,7 +63,7 @@ func New(ctx context.Context, bucket string, cfg *Config) (bfs.Bucket, error) {
 	}
 	config.norm()
 
-	client, err := storage.NewClient(ctx)
+	client, err := storage.NewClient(ctx, cfg.Options...)
 	if err != nil {
 		return nil, err
 	}
