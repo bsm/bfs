@@ -63,7 +63,7 @@ func New(ctx context.Context, bucket string, cfg *Config) (bfs.Bucket, error) {
 	}
 	config.norm()
 
-	client, err := storage.NewClient(ctx, cfg.Options...)
+	client, err := storage.NewClient(ctx, config.Options...)
 	if err != nil {
 		return nil, err
 	}
