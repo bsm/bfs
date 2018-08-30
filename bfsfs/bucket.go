@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
 )
 
@@ -35,7 +36,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		return newIterator(nil), nil
 	}
 
-	matches, err := filepath.Glob(b.resolve(pattern))
+	matches, err := doublestar.Glob(b.resolve(pattern))
 	if err != nil {
 		return nil, normError(err)
 	}

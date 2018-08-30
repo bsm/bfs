@@ -18,7 +18,9 @@ var ErrNotFound = errors.New("bfs: object not found")
 
 // Bucket is an abstract storage bucket.
 type Bucket interface {
-	// Glob lists the files mathing a glob pattern.
+	// Glob lists the files matching a glob pattern. It supports
+	// `*`, `**`, `?` wildcards, character classes and alternative sequences.
+	// Please see https://github.com/bmatcuk/doublestar#patterns for more details.
 	Glob(ctx context.Context, pattern string) (Iterator, error)
 
 	// Head returns an object's meta Info.

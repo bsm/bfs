@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
 	giterator "google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -93,7 +94,7 @@ func (b *gsBucket) withPrefix(name string) string {
 // Glob implements bfs.Bucket.
 func (b *gsBucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	// quick sanity check
-	if _, err := path.Match(pattern, ""); err != nil {
+	if _, err := doublestar.Match(pattern, ""); err != nil {
 		return nil, err
 	}
 
@@ -191,7 +192,7 @@ func (i *iterator) Next() bool {
 		}
 
 		name := i.parent.stripPrefix(obj.Name)
-		if ok, err := path.Match(i.pattern, name); err != nil {
+		if ok, err := doublestar.Match(i.pattern, name); err != nil {
 			i.err = err
 			return false
 		} else if ok {

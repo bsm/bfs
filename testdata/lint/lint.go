@@ -41,6 +41,7 @@ func Lint(data *Data) func() {
 				Skip("test is disabled")
 			}
 			Expect(readonly.Glob(ctx, "*/*")).To(whenDrained(HaveLen(NumReadonlySamples)))
+			Expect(readonly.Glob(ctx, "**")).To(whenDrained(HaveLen(NumReadonlySamples)))
 		})
 
 		It("should glob", func() {
@@ -57,6 +58,7 @@ func Lint(data *Data) func() {
 			Expect(subject.Glob(ctx, "path/*/*.txt")).To(whenDrained(HaveLen(2)))
 			Expect(subject.Glob(ctx, "path/*/[ft]*")).To(whenDrained(HaveLen(2)))
 			Expect(subject.Glob(ctx, "path/*/[ft]*.json")).To(whenDrained(HaveLen(1)))
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(HaveLen(3)))
 		})
 
 		It("should head", func() {

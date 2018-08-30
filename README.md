@@ -31,6 +31,7 @@ func main() {
 	ctx := context.Background()
 	bucket := bfs.NewInMem()
 
+	// Write object
 	o1, err := bucket.Create(ctx, "nested/file.txt")
 	if err != nil {
 		panic(err)
@@ -44,12 +45,14 @@ func main() {
 		panic(err)
 	}
 
-	entries, err := bucket.Glob(ctx, "nested/*")
+	// Glob entries
+	entries, err := bucket.Glob(ctx, "nested/**")
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println("ENTRIES:", entries)
 
+	// Read object
 	o2, err := bucket.Open(ctx, "nested/file.txt")
 	if err != nil {
 		panic(err)
@@ -62,12 +65,14 @@ func main() {
 	}
 	fmt.Println("DATA:", string(data))
 
+	// Head object
 	info, err := bucket.Head(ctx, "nested/file.txt")
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("INFO: name=%q size=%d\n", info.Name, info.Size)
 
+	// Delete object
 	if err := bucket.Remove(ctx, "nested/file.txt"); err != nil {
 		panic(err)
 	}

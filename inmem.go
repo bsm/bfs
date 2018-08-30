@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"path"
 	"sync"
 	"time"
+
+	"github.com/bmatcuk/doublestar"
 )
 
 // InMem is an in-memory Bucket implementation which can be used for mocking.
@@ -29,7 +30,7 @@ func (b *InMem) Glob(_ context.Context, pattern string) (Iterator, error) {
 
 	var matches []string
 	for key := range b.objects {
-		if ok, err := path.Match(pattern, key); err != nil {
+		if ok, err := doublestar.Match(pattern, key); err != nil {
 			return nil, err
 		} else if ok {
 			matches = append(matches, key)

@@ -27,7 +27,7 @@ func ExampleInMem() {
 	}
 
 	// Glob entries
-	entries, err := bucket.Glob(ctx, "nested/*")
+	entries, err := bucket.Glob(ctx, "nested/**")
 	if err != nil {
 		panic(err)
 	}

@@ -36,6 +36,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
 )
 
@@ -122,7 +123,7 @@ func (b *s3Bucket) withPrefix(name string) string {
 // Glob implements bfs.Bucket.
 func (b *s3Bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	// quick sanity check
-	if _, err := path.Match(pattern, ""); err != nil {
+	if _, err := doublestar.Match(pattern, ""); err != nil {
 		return nil, err
 	}
 
@@ -355,7 +356,7 @@ func (i *iterator) fetchNextPage() error {
 		}
 
 		name := i.parent.stripPrefix(aws.StringValue(obj.Key))
-		if ok, err := path.Match(i.pattern, name); err != nil {
+		if ok, err := doublestar.Match(i.pattern, name); err != nil {
 			return err
 		} else if ok {
 			i.page = append(i.page, name)
