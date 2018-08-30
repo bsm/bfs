@@ -28,11 +28,13 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -46,9 +48,28 @@ const DefaultACL = "bucket-owner-full-control"
 func init() {
 	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		q := u.Query()
+		c := aws.Config{}
+
+		if s := q.Get("aws_access_key_id"); s != "" {
+			c.Credentials = credentials.NewStaticCredentials(
+				s,
+				q.Get("aws_secret_access_key"),
+				q.Get("aws_session_token"),
+			)
+		}
+		if s := q.Get("region"); s != "" {
+			c.Region = aws.String(s)
+		}
+		if s := q.Get("max_retries"); s != "" {
+			if n, err := strconv.Atoi(s); err == nil {
+				c.MaxRetries = aws.Int(n)
+			}
+		}
+
 		return New(u.Host, &Config{
 			Prefix: q.Get("prefix"),
 			ACL:    q.Get("acl"),
+			AWS:    c,
 		})
 	})
 }
