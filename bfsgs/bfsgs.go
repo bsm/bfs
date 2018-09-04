@@ -46,13 +46,8 @@ func init() {
 			opts = append(opts, option.WithCredentialsFile(s))
 		}
 
-		prefix := query.Get("prefix")
-		if prefix == "" {
-			prefix = u.Path
-		}
-
 		return New(ctx, u.Host, &Config{
-			Prefix:  strings.Trim(prefix, "/"),
+			Prefix:  strings.Trim(query.Get("prefix"), "/"),
 			Options: opts,
 		})
 	})

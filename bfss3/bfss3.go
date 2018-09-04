@@ -66,13 +66,8 @@ func init() {
 			}
 		}
 
-		prefix := query.Get("prefix")
-		if prefix == "" {
-			prefix = u.Path
-		}
-
 		return New(u.Host, &Config{
-			Prefix: strings.Trim(prefix, "/"),
+			Prefix: strings.Trim(query.Get("prefix"), "/"),
 			ACL:    query.Get("acl"),
 			AWS:    awscfg,
 		})
