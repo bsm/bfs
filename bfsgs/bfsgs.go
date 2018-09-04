@@ -36,9 +36,24 @@ import (
 
 func init() {
 	bfs.Register("gs", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
-		q := u.Query()
+		query := u.Query()
+
+		var opts []option.ClientOption
+		if s := query.Get("scopes"); s != "" {
+			opts = append(opts, option.WithScopes(strings.Split(s, ",")...))
+		}
+		if s := query.Get("credentials"); s != "" {
+			opts = append(opts, option.WithCredentialsFile(s))
+		}
+
+		prefix := query.Get("prefix")
+		if prefix == "" {
+			prefix = u.Path
+		}
+
 		return New(ctx, u.Host, &Config{
-			Prefix: q.Get("prefix"),
+			Prefix:  strings.Trim(prefix, "/"),
+			Options: opts,
 		})
 	})
 }

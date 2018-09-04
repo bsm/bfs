@@ -47,29 +47,34 @@ const DefaultACL = "bucket-owner-full-control"
 
 func init() {
 	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
-		q := u.Query()
-		c := aws.Config{}
+		query := u.Query()
+		awscfg := aws.Config{}
 
-		if s := q.Get("aws_access_key_id"); s != "" {
-			c.Credentials = credentials.NewStaticCredentials(
+		if s := query.Get("aws_access_key_id"); s != "" {
+			awscfg.Credentials = credentials.NewStaticCredentials(
 				s,
-				q.Get("aws_secret_access_key"),
-				q.Get("aws_session_token"),
+				query.Get("aws_secret_access_key"),
+				query.Get("aws_session_token"),
 			)
 		}
-		if s := q.Get("region"); s != "" {
-			c.Region = aws.String(s)
+		if s := query.Get("region"); s != "" {
+			awscfg.Region = aws.String(s)
 		}
-		if s := q.Get("max_retries"); s != "" {
+		if s := query.Get("max_retries"); s != "" {
 			if n, err := strconv.Atoi(s); err == nil {
-				c.MaxRetries = aws.Int(n)
+				awscfg.MaxRetries = aws.Int(n)
 			}
 		}
 
+		prefix := query.Get("prefix")
+		if prefix == "" {
+			prefix = u.Path
+		}
+
 		return New(u.Host, &Config{
-			Prefix: q.Get("prefix"),
-			ACL:    q.Get("acl"),
-			AWS:    c,
+			Prefix: strings.Trim(prefix, "/"),
+			ACL:    query.Get("acl"),
+			AWS:    awscfg,
 		})
 	})
 }

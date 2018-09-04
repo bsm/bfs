@@ -86,6 +86,7 @@ func Lint(data *Data) func() {
 			data := make([]byte, 100)
 			Expect(obj.Read(data)).To(Equal(8))
 			Expect(string(data[:8])).To(Equal("TESTDATA"))
+			Expect(obj.Close()).To(Succeed())
 		})
 
 		It("should remove", func() {
