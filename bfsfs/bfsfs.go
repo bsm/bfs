@@ -14,7 +14,7 @@
 //     u, _ := url.Parse("file://path/to/file.ext?tmpdir=path/to/tmp/dir")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
-//     f, _ := bucket.Open(ctx)
+//     f, _ := bucket.Open(ctx, u.Path)
 //     ...
 //   }
 //
@@ -33,7 +33,7 @@ import (
 func init() {
 	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 		q := u.Query()
-		return New(u.Path, q.Get("tmpdir"))
+		return New(u.Host, q.Get("tmpdir"))
 	})
 }
 

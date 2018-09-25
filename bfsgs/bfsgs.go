@@ -14,7 +14,7 @@
 //     u, _ := url.Parse("gs://bucket/path/to/file.ext?prefix=my/prefix")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
-//     f, _ := bucket.Open(ctx)
+//     f, _ := bucket.Open(ctx, u.Path)
 //     ...
 //   }
 //
