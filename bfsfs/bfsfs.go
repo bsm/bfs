@@ -32,8 +32,11 @@ import (
 
 func init() {
 	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
-		q := u.Query()
-		return New(u.Host, q.Get("tmpdir"))
+		root := u.Host
+		if root == "" { // special case of `file:///abs/path/...`
+			root = "/"
+		}
+		return New(u.Host, u.Query().Get("tmpdir"))
 	})
 }
 
