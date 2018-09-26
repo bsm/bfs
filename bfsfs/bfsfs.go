@@ -36,7 +36,7 @@ func init() {
 		if root == "" { // special case of `file:///abs/path/...`
 			root = "/"
 		}
-		return New(u.Host, u.Query().Get("tmpdir"))
+		return New(root, u.Query().Get("tmpdir"))
 	})
 }
 
