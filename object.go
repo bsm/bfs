@@ -15,9 +15,9 @@ type Object struct {
 }
 
 // NewObject inits a new object from an URL string
-func NewObject(ctx context.Context, urlString string) (*Object, error) {
+func NewObject(ctx context.Context, fullURL string) (*Object, error) {
 	// parse URL
-	u, err := url.Parse(urlString)
+	u, err := url.Parse(fullURL)
 	if err != nil {
 		return nil, err
 	}
