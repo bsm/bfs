@@ -52,7 +52,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 	return newIterator(files), nil
 }
 
-// Head returns an object's meta Info.
+// Head implements bfs.Bucket
 func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 	fi, err := os.Stat(b.resolve(name))
 	if err != nil {
@@ -65,7 +65,7 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 	}, nil
 }
 
-// Open opens an object for reading.
+// Open implements bfs.Bucket
 func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 	f, err := os.Open(b.resolve(name))
 	if err != nil {
@@ -74,7 +74,7 @@ func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 	return f, nil
 }
 
-// Create creates/opens a object for writing.
+// Create implements bfs.Bucket
 func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
 	f, err := openAtomicFile(ctx, b.resolve(name), b.tmpDir)
 	if err != nil {
@@ -83,7 +83,7 @@ func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error
 	return f, nil
 }
 
-// Remove removes a object.
+// Remove implements bfs.Bucket
 func (b *bucket) Remove(ctx context.Context, name string) error {
 	err := os.Remove(b.resolve(name))
 	if err != nil && !os.IsNotExist(err) {
@@ -92,7 +92,7 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 	return nil
 }
 
-// Close closes the bucket.
+// Close implements bfs.Bucket
 func (b *bucket) Close() error {
 	return nil // noop
 }

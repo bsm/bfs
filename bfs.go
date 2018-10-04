@@ -23,7 +23,7 @@ type Bucket interface {
 	// Please see https://github.com/bmatcuk/doublestar#patterns for more details.
 	Glob(ctx context.Context, pattern string) (Iterator, error)
 
-	// Head returns an object's meta Info.
+	// Head returns an object's meta info.
 	Head(ctx context.Context, name string) (*MetaInfo, error)
 
 	// Open opens an object for reading.
