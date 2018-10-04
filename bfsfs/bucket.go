@@ -26,7 +26,7 @@ func New(root, tmpDir string) (bfs.Bucket, error) {
 	}
 
 	return &bucket{
-		root:   filepath.Clean(root) + string(filepath.Separator), // root should always have trailing slash to trim file names properly
+		root:   filepath.FromSlash(filepath.Clean(root)) + string(filepath.Separator), // root should always have trailing slash to trim file names properly
 		tmpDir: tmpDir,
 	}, nil
 }
@@ -37,7 +37,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		return newIterator(nil), nil
 	}
 
-	matches, err := doublestar.Glob(internal.WithinNamespace(b.root, pattern))
+	matches, err := doublestar.Glob(b.fullPath(pattern))
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -55,7 +55,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 
 // Head returns an object's meta Info.
 func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
-	fi, err := os.Stat(internal.WithinNamespace(b.root, name))
+	fi, err := os.Stat(b.fullPath(name))
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -68,7 +68,7 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 
 // Open opens an object for reading.
 func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
-	f, err := os.Open(internal.WithinNamespace(b.root, name))
+	f, err := os.Open(b.fullPath(name))
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -77,7 +77,7 @@ func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 
 // Create creates/opens a object for writing.
 func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
-	f, err := openAtomicFile(ctx, internal.WithinNamespace(b.root, name), b.tmpDir)
+	f, err := openAtomicFile(ctx, b.fullPath(name), b.tmpDir)
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -86,7 +86,7 @@ func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error
 
 // Remove removes a object.
 func (b *bucket) Remove(ctx context.Context, name string) error {
-	err := os.Remove(internal.WithinNamespace(b.root, name))
+	err := os.Remove(b.fullPath(name))
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -96,4 +96,9 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 // Close closes the bucket.
 func (b *bucket) Close() error {
 	return nil // noop
+}
+
+// Close closes the bucket.
+func (b *bucket) fullPath(name string) string {
+	return filepath.FromSlash(internal.WithinNamespace(filepath.ToSlash(b.root), filepath.ToSlash(name)))
 }
