@@ -4,11 +4,13 @@ import (
 	"context"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
+	"github.com/bsm/bfs/internal"
 )
 
 // bucket emulates bfs.Bucket behaviour for local file system.
@@ -36,7 +38,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		return newIterator(nil), nil
 	}
 
-	matches, err := doublestar.Glob(b.resolve(pattern))
+	matches, err := doublestar.Glob(internal.WithinNamespace(b.root, pattern))
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -54,7 +56,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 
 // Head returns an object's meta Info.
 func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
-	fi, err := os.Stat(b.resolve(name))
+	fi, err := os.Stat(internal.WithinNamespace(b.root, name))
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -67,7 +69,7 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 
 // Open opens an object for reading.
 func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
-	f, err := os.Open(b.resolve(name))
+	f, err := os.Open(internal.WithinNamespace(b.root, name))
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -76,7 +78,7 @@ func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 
 // Create creates/opens a object for writing.
 func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
-	f, err := openAtomicFile(ctx, b.resolve(name), b.tmpDir)
+	f, err := openAtomicFile(ctx, internal.WithinNamespace(b.root, name), b.tmpDir)
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -85,7 +87,7 @@ func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error
 
 // Remove removes a object.
 func (b *bucket) Remove(ctx context.Context, name string) error {
-	err := os.Remove(b.resolve(name))
+	err := os.Remove(internal.WithinNamespace(b.root, name))
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -99,5 +101,5 @@ func (b *bucket) Close() error {
 
 // resolve returns full safely rooted path.
 func (b *bucket) resolve(name string) string {
-	return filepath.Join(b.root, filepath.Join("/", name))
+	return filepath.Join(b.root, filepath.FromSlash(path.Clean("/"+name)))
 }

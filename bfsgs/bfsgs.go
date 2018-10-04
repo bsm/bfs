@@ -30,12 +30,12 @@ import (
 	"context"
 	"io"
 	"net/url"
-	"path"
 	"strings"
 
 	"cloud.google.com/go/storage"
 	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
+	"github.com/bsm/bfs/internal"
 	giterator "google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -104,7 +104,7 @@ func (b *gsBucket) withPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
-	return path.Join(b.config.Prefix, name)
+	return internal.WithinNamespace(b.config.Prefix, name)
 }
 
 // Glob implements bfs.Bucket.
