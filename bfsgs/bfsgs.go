@@ -43,26 +43,29 @@ import (
 func init() {
 	bfs.Register("gs", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
+		conf := &Config{
+			Prefix: strings.Trim(query.Get("prefix"), "/"),
+		}
 
-		var opts []option.ClientOption
 		if s := query.Get("scopes"); s != "" {
-			opts = append(opts, option.WithScopes(strings.Split(s, ",")...))
+			conf.Options = append(conf.Options, option.WithScopes(strings.Split(s, ",")...))
 		}
 		if s := query.Get("credentials"); s != "" {
-			opts = append(opts, option.WithCredentialsFile(s))
+			conf.Options = append(conf.Options, option.WithCredentialsFile(s))
+		}
+		if s := query.Get("acl"); s != "" {
+			conf.PredefinedACL = s
 		}
 
-		return New(ctx, u.Host, &Config{
-			Prefix:  strings.Trim(query.Get("prefix"), "/"),
-			Options: opts,
-		})
+		return New(ctx, u.Host, conf)
 	})
 }
 
 // Config is passed to New to configure the Google Cloud Storage connection.
 type Config struct {
-	Options []option.ClientOption // options for Google API client
-	Prefix  string                // an optional path prefix
+	Options       []option.ClientOption // options for Google API client
+	Prefix        string                // an optional path prefix
+	PredefinedACL string                // an optional predefined ACL string, e.g. "publicRead"
 }
 
 func (*Config) norm() {}
@@ -149,7 +152,9 @@ func (b *gsBucket) Open(ctx context.Context, name string) (io.ReadCloser, error)
 // Create implements bfs.Bucket.
 func (b *gsBucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
 	obj := b.bucket.Object(b.withPrefix(name))
-	return obj.NewWriter(ctx), nil
+	wrt := obj.NewWriter(ctx)
+	wrt.PredefinedACL = b.config.PredefinedACL
+	return wrt, nil
 }
 
 // Remove implements bfs.Bucket.
