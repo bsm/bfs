@@ -11,7 +11,7 @@
 //   func main() {
 //     ctx := context.Background()
 //
-//     u, _ := url.Parse("s3://bucket?prefix=my/prefix&acl=MY_ACL")
+//     u, _ := url.Parse("s3://bucket?prefix=custom%2Fprefix&acl=MY_ACL")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
 //     f, _ := bucket.Open(ctx)

@@ -11,7 +11,7 @@
 //   func main() {
 //     ctx := context.Background()
 //
-//     u, _ := url.Parse("gs://bucket?prefix=my/prefix")
+//     u, _ := url.Parse("gs://bucket?prefix=custom%2Fprefix")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
 //     f, _ := bucket.Open(ctx)

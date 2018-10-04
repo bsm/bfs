@@ -11,7 +11,7 @@
 //   func main() {
 //     ctx := context.Background()
 //
-//     u, _ := url.Parse("file:///path/to/root?tmpdir=path/to/root")
+//     u, _ := url.Parse("file:///path/to/root?tmpdir=%2Fcustom%2Ftmp")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
 //     f, _ := bucket.Open(ctx)
