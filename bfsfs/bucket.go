@@ -14,6 +14,7 @@ import (
 
 // bucket emulates bfs.Bucket behaviour for local file system.
 type bucket struct {
+	fsRoot string
 	root   string
 	tmpDir string
 }
@@ -24,9 +25,11 @@ func New(root, tmpDir string) (bfs.Bucket, error) {
 	if root == "" {
 		root = "."
 	}
+	root = filepath.Clean(root)
 
 	return &bucket{
-		root:   filepath.FromSlash(filepath.Clean(root)) + string(filepath.Separator), // root should always have trailing slash to trim file names properly
+		fsRoot: filepath.FromSlash(root) + string(filepath.Separator), // root should always have trailing slash to trim file names properly
+		root:   filepath.ToSlash(root),
 		tmpDir: tmpDir,
 	}, nil
 }
@@ -47,7 +50,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		if fi, err := os.Stat(match); err != nil {
 			return nil, normError(err)
 		} else if fi.Mode().IsRegular() {
-			files = append(files, strings.TrimPrefix(match, b.root))
+			files = append(files, strings.TrimPrefix(match, b.fsRoot))
 		}
 	}
 	return newIterator(files), nil
@@ -99,5 +102,5 @@ func (b *bucket) Close() error {
 }
 
 func (b *bucket) fullPath(name string) string {
-	return filepath.FromSlash(internal.WithinNamespace(filepath.ToSlash(b.root), filepath.ToSlash(name)))
+	return filepath.FromSlash(internal.WithinNamespace(b.root, filepath.ToSlash(name)))
 }
