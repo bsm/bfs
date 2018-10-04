@@ -8,6 +8,20 @@ import (
 	"strings"
 )
 
+// ObjectHandle is an abstract object handle.
+type ObjectHandle interface {
+	// Head returns an object's meta info.
+	Head(context.Context) (*MetaInfo, error)
+	// Open opens an object for reading.
+	Open(context.Context) (io.ReadCloser, error)
+	// Create creates/opens a object for writing.
+	Create(context.Context) (io.WriteCloser, error)
+	// Remove removes a object.
+	Remove(context.Context) error
+	// Close closes the object.
+	Close() error
+}
+
 // Object is a handle for a single file/object on a Bucket.
 type Object struct {
 	name   string

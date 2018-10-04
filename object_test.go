@@ -11,6 +11,7 @@ import (
 
 var _ = Describe("Object", func() {
 	var subject *bfs.Object
+	var _ bfs.ObjectHandle = subject
 	var ctx = context.Background()
 
 	BeforeEach(func() {
