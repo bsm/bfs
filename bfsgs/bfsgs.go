@@ -14,7 +14,7 @@
 //     u, _ := url.Parse("gs://bucket?prefix=custom%2Fprefix")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
-//     f, _ := bucket.Open(ctx)
+//     f, _ := bucket.Open(ctx, "file/within/prefix.txt")
 //     ...
 //   }
 //
