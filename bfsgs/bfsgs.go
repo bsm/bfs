@@ -11,12 +11,18 @@
 //   func main() {
 //     ctx := context.Background()
 //
-//     u, _ := url.Parse("gs://bucket/path/to/file.ext?prefix=my/prefix")
+//     u, _ := url.Parse("gs://bucket?prefix=my/prefix")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
 //     f, _ := bucket.Open(ctx)
 //     ...
 //   }
+//
+// bfs.Resolve supports the following query parameters:
+//
+//   prefix      - path prefix/namespace within the bucket
+//   scopes      - custom scopes
+//   credentials - path to custom credentials file
 //
 package bfsgs
 

@@ -11,12 +11,22 @@
 //   func main() {
 //     ctx := context.Background()
 //
-//     u, _ := url.Parse("s3://bucket/path/to/file.ext?prefix=my/prefix&acl=MY_ACL")
+//     u, _ := url.Parse("s3://bucket?prefix=my/prefix&acl=MY_ACL")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
 //     f, _ := bucket.Open(ctx)
 //     ...
 //   }
+//
+// bfs.Resolve supports the following query parameters:
+//
+//   prefix                 - path prefix/namespace within the bucket
+//   aws_access_key_id      - custom AWS credentials
+//   aws_secret_access_key  - custom AWS credentials
+//   aws_session_token      - custom AWS credentials
+//   region                 - specify an AWS region
+//   max_retries            - specify maximum number of retries
+//   acl                    - custom ACL, defaults to DefaultACL
 //
 package bfss3
 

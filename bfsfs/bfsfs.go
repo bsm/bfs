@@ -11,12 +11,16 @@
 //   func main() {
 //     ctx := context.Background()
 //
-//     u, _ := url.Parse("file://path/to/file.ext?tmpdir=path/to/tmp/dir")
+//     u, _ := url.Parse("file:///path/to/root?tmpdir=path/to/root")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
 //     f, _ := bucket.Open(ctx)
 //     ...
 //   }
+//
+// bfs.Resolve supports the following query parameters:
+//
+//   tmpdir      - custom temp dir
 //
 package bfsfs
 
