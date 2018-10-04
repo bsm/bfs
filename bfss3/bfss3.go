@@ -50,6 +50,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
+	"github.com/bsm/bfs/internal"
 )
 
 // DefaultACL is the default ACL setting.
@@ -148,7 +149,7 @@ func (b *s3Bucket) withPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
-	return path.Join(b.config.Prefix, name)
+	return internal.WithinNamespace(b.config.Prefix, name)
 }
 
 // Glob implements bfs.Bucket.
