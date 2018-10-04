@@ -98,7 +98,6 @@ func (b *bucket) Close() error {
 	return nil // noop
 }
 
-// Close closes the bucket.
 func (b *bucket) fullPath(name string) string {
 	return filepath.FromSlash(internal.WithinNamespace(filepath.ToSlash(b.root), filepath.ToSlash(name)))
 }
