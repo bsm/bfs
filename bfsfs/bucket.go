@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -97,9 +96,4 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 // Close closes the bucket.
 func (b *bucket) Close() error {
 	return nil // noop
-}
-
-// resolve returns full safely rooted path.
-func (b *bucket) resolve(name string) string {
-	return filepath.Join(b.root, filepath.FromSlash(path.Clean("/"+name)))
 }
