@@ -28,7 +28,7 @@ func New(root, tmpDir string) (bfs.Bucket, error) {
 	root = filepath.Clean(root)
 
 	return &bucket{
-		fsRoot: filepath.FromSlash(root) + string(filepath.Separator), // root should always have trailing slash to trim file names properly
+		fsRoot: root + string(filepath.Separator), // root should always have trailing slash to trim file names properly
 		root:   filepath.ToSlash(root),
 		tmpDir: tmpDir,
 	}, nil
