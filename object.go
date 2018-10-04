@@ -52,6 +52,14 @@ func NewObject(ctx context.Context, fullURL string) (*Object, error) {
 	}, nil
 }
 
+// NewInMemObject returns a new in-memory object.
+func NewInMemObject(name string) *Object {
+	return &Object{
+		name:   name,
+		bucket: NewInMem(),
+	}
+}
+
 // Head returns an object's meta info.
 func (o *Object) Head(ctx context.Context) (*MetaInfo, error) {
 	return o.bucket.Head(ctx, o.name)
