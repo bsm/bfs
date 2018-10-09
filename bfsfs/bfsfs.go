@@ -29,6 +29,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/bsm/bfs"
@@ -36,8 +37,9 @@ import (
 
 func init() {
 	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+		root := path.Join(u.Host, u.Path) // to handle special relative cases like: "file://this-works-like-a-host/path..."
 		q := u.Query()
-		return New(u.Path, q.Get("tmpdir"))
+		return New(root, q.Get("tmpdir"))
 	})
 }
 

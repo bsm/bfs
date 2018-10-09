@@ -38,7 +38,7 @@ func NewObject(ctx context.Context, fullURL string) (*Object, error) {
 
 	// store full path name and unset
 	name := strings.TrimPrefix(path.Clean(u.Path), "/")
-	u.Path = ""
+	u.Path = "/"
 
 	// resolve bucket
 	bucket, err := Resolve(ctx, u)
