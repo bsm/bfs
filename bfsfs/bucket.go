@@ -50,7 +50,8 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		if fi, err := os.Stat(match); err != nil {
 			return nil, normError(err)
 		} else if fi.Mode().IsRegular() {
-			files = append(files, strings.TrimPrefix(match, b.fsRoot))
+			fsPath := strings.TrimPrefix(match, b.fsRoot) // filesystem path (with OS-specific separators)
+			files = append(files, filepath.ToSlash(fsPath))
 		}
 	}
 	return newIterator(files), nil
