@@ -78,7 +78,7 @@ func init() {
 		}
 
 		return New(u.Host, &Config{
-			Prefix: strings.Trim(query.Get("prefix"), "/"),
+			Prefix: query.Get("prefix"),
 			ACL:    query.Get("acl"),
 			AWS:    awscfg,
 		})
@@ -100,6 +100,10 @@ type Config struct {
 }
 
 func (c *Config) norm() error {
+	if c.Prefix != "" {
+		c.Prefix = internal.NormObjectName(c.Prefix) + "/"
+	}
+
 	if c.ACL == "" {
 		c.ACL = DefaultACL
 	}
@@ -137,19 +141,19 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 }
 
 func (b *s3Bucket) stripPrefix(name string) string {
-	if b.config.Prefix == "" {
-		return name
+	name = internal.NormObjectName(name)
+	if b.config.Prefix != "" {
+		name = strings.TrimPrefix(name, b.config.Prefix)
 	}
-	name = strings.TrimPrefix(name, b.config.Prefix)
-	name = strings.TrimPrefix(name, "/")
 	return name
 }
 
 func (b *s3Bucket) withPrefix(name string) string {
-	if b.config.Prefix == "" {
-		return name
+	name = internal.NormObjectName(name)
+	if b.config.Prefix != "" {
+		name = internal.WithinNamespace(b.config.Prefix, name)
 	}
-	return internal.WithinNamespace(b.config.Prefix, name)
+	return name
 }
 
 // Glob implements bfs.Bucket.
@@ -177,7 +181,7 @@ func (b *s3Bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 	}
 
 	return &bfs.MetaInfo{
-		Name:    name,
+		Name:    internal.NormObjectName(name),
 		Size:    aws.Int64Value(resp.ContentLength),
 		ModTime: aws.TimeValue(resp.LastModified),
 	}, nil

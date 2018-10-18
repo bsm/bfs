@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar"
+	"github.com/bsm/bfs/internal"
 )
 
 // InMem is an in-memory Bucket implementation which can be used for mocking.
@@ -41,6 +42,8 @@ func (b *InMem) Glob(_ context.Context, pattern string) (Iterator, error) {
 
 // Head implements Bucket.
 func (b *InMem) Head(_ context.Context, name string) (*MetaInfo, error) {
+	name = internal.NormObjectName(name)
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -58,6 +61,8 @@ func (b *InMem) Head(_ context.Context, name string) (*MetaInfo, error) {
 
 // Open implements Bucket.
 func (b *InMem) Open(_ context.Context, name string) (io.ReadCloser, error) {
+	name = internal.NormObjectName(name)
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -72,11 +77,14 @@ func (b *InMem) Open(_ context.Context, name string) (io.ReadCloser, error) {
 
 // Create implements Bucket.
 func (b *InMem) Create(ctx context.Context, name string) (io.WriteCloser, error) {
+	name = internal.NormObjectName(name)
 	return &inMemWriter{ctx: ctx, bucket: b, name: name}, nil
 }
 
 // Remove implements Bucket.
 func (b *InMem) Remove(_ context.Context, name string) error {
+	name = internal.NormObjectName(name)
+
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

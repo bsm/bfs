@@ -44,7 +44,7 @@ func init() {
 	bfs.Register("gs", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
 		conf := &Config{
-			Prefix: strings.Trim(query.Get("prefix"), "/"),
+			Prefix: query.Get("prefix"),
 		}
 
 		if s := query.Get("scopes"); s != "" {
@@ -68,7 +68,11 @@ type Config struct {
 	PredefinedACL string                // an optional predefined ACL string, e.g. "publicRead"
 }
 
-func (*Config) norm() {}
+func (c *Config) norm() {
+	if c.Prefix != "" {
+		c.Prefix = internal.NormObjectName(c.Prefix) + "/"
+	}
+}
 
 type gsBucket struct {
 	bucket *storage.BucketHandle
@@ -95,19 +99,19 @@ func New(ctx context.Context, bucket string, cfg *Config) (bfs.Bucket, error) {
 }
 
 func (b *gsBucket) stripPrefix(name string) string {
-	if b.config.Prefix == "" {
-		return name
+	name = internal.NormObjectName(name)
+	if b.config.Prefix != "" {
+		name = strings.TrimPrefix(name, b.config.Prefix)
 	}
-	name = strings.TrimPrefix(name, b.config.Prefix)
-	name = strings.TrimPrefix(name, "/")
 	return name
 }
 
 func (b *gsBucket) withPrefix(name string) string {
-	if b.config.Prefix == "" {
-		return name
+	name = internal.NormObjectName(name)
+	if b.config.Prefix != "" {
+		name = internal.WithinNamespace(b.config.Prefix, name)
 	}
-	return internal.WithinNamespace(b.config.Prefix, name)
+	return name
 }
 
 // Glob implements bfs.Bucket.
@@ -136,7 +140,7 @@ func (b *gsBucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 	}
 
 	return &bfs.MetaInfo{
-		Name:    name,
+		Name:    internal.NormObjectName(name),
 		Size:    attrs.Size,
 		ModTime: attrs.Updated,
 	}, nil

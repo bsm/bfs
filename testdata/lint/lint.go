@@ -27,13 +27,13 @@ func Lint(data *Data) func() {
 		})
 
 		It("should write", func() {
-			blank, err := subject.Create(ctx, "blank.txt")
+			blank, err := subject.Create(ctx, "path/to/blank.txt")
 			Expect(err).NotTo(HaveOccurred())
 			defer blank.Close()
 
 			Expect(subject.Glob(ctx, "*")).To(whenDrained(BeEmpty()))
 			Expect(blank.Close()).To(Succeed())
-			Expect(subject.Glob(ctx, "*")).To(whenDrained(ConsistOf("blank.txt")))
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(ConsistOf("path/to/blank.txt")))
 		})
 
 		It("should glob lots of files", func() {
@@ -52,6 +52,7 @@ func Lint(data *Data) func() {
 			Expect(subject.Glob(ctx, "")).To(whenDrained(BeEmpty()))
 			Expect(subject.Glob(ctx, "path/*")).To(whenDrained(BeEmpty()))
 			Expect(subject.Glob(ctx, "path/*/*")).To(whenDrained(HaveLen(3)))
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(HaveLen(3)))
 			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(3)))
 			Expect(subject.Glob(ctx, "*/a/*")).To(whenDrained(HaveLen(2)))
 			Expect(subject.Glob(ctx, "*/b/*")).To(whenDrained(HaveLen(1)))
@@ -92,9 +93,9 @@ func Lint(data *Data) func() {
 		It("should remove", func() {
 			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
 
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(1)))
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(HaveLen(1)))
 			Expect(subject.Remove(ctx, "path/to/first.txt")).To(Succeed())
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(BeEmpty()))
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(BeEmpty()))
 
 			Expect(subject.Remove(ctx, "missing")).To(Succeed())
 		})
@@ -109,9 +110,9 @@ func Lint(data *Data) func() {
 
 			Expect(writeTestData(subject, "path/to/src.txt")).To(Succeed())
 
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(1)))
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(HaveLen(1)))
 			Expect(copier.Copy(ctx, "path/to/src.txt", "path/to/dst.txt")).To(Succeed())
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(2)))
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(HaveLen(2)))
 
 			info, err := subject.Head(ctx, "path/to/dst.txt")
 			Expect(err).NotTo(HaveOccurred())
@@ -120,6 +121,24 @@ func Lint(data *Data) func() {
 			Expect(info.ModTime).To(BeTemporally("~", time.Now(), time.Second))
 		})
 
+		It("should normalise paths", func() {
+			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
+
+			info, err := subject.Head(ctx, "/path/to/first.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(info.Name).To(Equal("path/to/first.txt"))
+
+			obj, err := subject.Open(ctx, "/path/to/first.txt")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Read(make([]byte, 100))).To(Equal(8))
+			Expect(obj.Close()).To(Succeed())
+
+			Expect(bfs.CopyObject(subject, ctx, "path/to/first.txt", "/path/to/second.txt")).To(Succeed())
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(ConsistOf("path/to/first.txt", "path/to/second.txt")))
+
+			Expect(subject.Remove(ctx, "/path/to/first.txt")).To(Succeed())
+			Expect(subject.Glob(ctx, "**")).To(whenDrained(ConsistOf("path/to/second.txt")))
+		})
 	}
 }
 

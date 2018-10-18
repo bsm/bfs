@@ -27,8 +27,9 @@ func New(root, tmpDir string) (bfs.Bucket, error) {
 	}
 	root = filepath.Clean(root)
 
+	sep := string(filepath.Separator)
 	return &bucket{
-		fsRoot: root + string(filepath.Separator), // root should always have trailing slash to trim file names properly
+		fsRoot: strings.TrimRight(root, sep) + sep, // root should always have trailing slash to trim file names properly
 		root:   filepath.ToSlash(root),
 		tmpDir: tmpDir,
 	}, nil
@@ -50,8 +51,7 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		if fi, err := os.Stat(match); err != nil {
 			return nil, normError(err)
 		} else if fi.Mode().IsRegular() {
-			fsPath := strings.TrimPrefix(match, b.fsRoot) // filesystem path (with OS-specific separators)
-			files = append(files, filepath.ToSlash(fsPath))
+			files = append(files, b.cleanPath(match))
 		}
 	}
 	return newIterator(files), nil
@@ -63,8 +63,9 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 	if err != nil {
 		return nil, normError(err)
 	}
+
 	return &bfs.MetaInfo{
-		Name:    name,
+		Name:    internal.NormObjectName(name),
 		Size:    fi.Size(),
 		ModTime: fi.ModTime(),
 	}, nil
@@ -98,10 +99,14 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 }
 
 // Close implements bfs.Bucket
-func (b *bucket) Close() error {
+func (*bucket) Close() error {
 	return nil // noop
 }
 
 func (b *bucket) fullPath(name string) string {
 	return filepath.FromSlash(internal.WithinNamespace(b.root, filepath.ToSlash(name)))
+}
+
+func (b *bucket) cleanPath(name string) string {
+	return internal.NormObjectName(strings.TrimPrefix(name, b.fsRoot))
 }
