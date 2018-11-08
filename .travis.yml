@@ -1,7 +1,5 @@
 language: go
 install:
-  - go get -u github.com/golang/dep/cmd/dep
-  - dep ensure -v -vendor-only
+  - go get -t ./...
 go:
-  - 1.10.x
-  - 1.9.x
+  - 1.11.x
