@@ -10,6 +10,8 @@ import (
 
 // ObjectHandle is an abstract object handle.
 type ObjectHandle interface {
+	// Name returns an object's name/path.
+	Name() string
 	// Head returns an object's meta info.
 	Head(context.Context) (*MetaInfo, error)
 	// Open opens an object for reading.
@@ -58,6 +60,11 @@ func NewInMemObject(name string) *Object {
 		name:   name,
 		bucket: NewInMem(),
 	}
+}
+
+// Name returns an object's name.
+func (o *Object) Name() string {
+	return o.name
 }
 
 // Head returns an object's meta info.

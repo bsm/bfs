@@ -20,6 +20,10 @@ var _ = Describe("Object", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
+	It("should have a name", func() {
+		Expect(subject.Name()).To(Equal("path/to/file.txt"))
+	})
+
 	It("should head/read/write", func() {
 		_, err := subject.Head(ctx)
 		Expect(err).To(Equal(bfs.ErrNotFound))
