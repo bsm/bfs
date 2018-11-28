@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/bfss3"
 	"github.com/bsm/bfs/testdata/lint"
 
@@ -22,10 +23,6 @@ var _ = Describe("Bucket", func() {
 	var data = lint.Data{}
 
 	BeforeEach(func() {
-		if skipTest {
-			Skip("test is disabled, could not connect to test bucket")
-		}
-
 		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
 		subject, err := bfss3.New(bucketName, &bfss3.Config{Prefix: prefix, AWS: awsConfig})
 		Expect(err).NotTo(HaveOccurred())
@@ -43,32 +40,30 @@ var _ = Describe("Bucket", func() {
 // ------------------------------------------------------------------------
 
 func TestSuite(t *testing.T) {
+	if err := sandboxCheck(); err != nil {
+		t.Skipf("skipping test, no sandbox access: %v", err)
+		return
+	}
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "bfs/bfss3")
 }
 
-var skipTest bool
-
-func init() {
+func sandboxCheck() error {
 	ctx := context.Background()
 	b, err := bfss3.New(bucketName, &bfss3.Config{AWS: awsConfig})
 	if err != nil {
-		skipTest = true
-		return
+		return err
 	}
 	defer b.Close()
 
-	if _, err := b.Glob(ctx, "*"); err != nil {
-		skipTest = true
-		return
+	if _, err := b.Head(ctx, "____"); err != bfs.ErrNotFound {
+		return err
 	}
+	return nil
 }
 
 var _ = AfterSuite(func() {
-	if skipTest {
-		return
-	}
-
 	ctx := context.Background()
 	b, err := bfss3.New(bucketName, &bfss3.Config{Prefix: "x/", AWS: awsConfig})
 	Expect(err).NotTo(HaveOccurred())

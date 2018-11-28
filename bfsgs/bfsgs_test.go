@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/bfsgs"
 	"github.com/bsm/bfs/testdata/lint"
 
@@ -19,20 +20,13 @@ var _ = Describe("Bucket", func() {
 	var data = lint.Data{}
 
 	BeforeEach(func() {
-		if skipTest {
-			Skip("test is disabled, could not connect to test bucket")
-		}
-
 		ctx := context.Background()
 
-		subject, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{
-			Prefix: "x/" + strconv.FormatInt(time.Now().UnixNano(), 10),
-		})
+		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		subject, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{Prefix: prefix})
 		Expect(err).NotTo(HaveOccurred())
 
-		readonly, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{
-			Prefix: "m/",
-		})
+		readonly, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{Prefix: "m/"})
 		Expect(err).NotTo(HaveOccurred())
 
 		data.Subject = subject
@@ -45,32 +39,30 @@ var _ = Describe("Bucket", func() {
 // ------------------------------------------------------------------------
 
 func TestSuite(t *testing.T) {
+	if err := sandboxCheck(); err != nil {
+		t.Skipf("skipping test, no sandbox access: %v", err)
+		return
+	}
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "bfs/bfsgs")
 }
 
-var skipTest bool
-
-func init() {
+func sandboxCheck() error {
 	ctx := context.Background()
 	b, err := bfsgs.New(ctx, bucketName, nil)
 	if err != nil {
-		skipTest = true
-		return
+		return err
 	}
 	defer b.Close()
 
-	if _, err := b.Glob(ctx, "*"); err != nil {
-		skipTest = true
-		return
+	if _, err := b.Head(ctx, "____"); err != bfs.ErrNotFound {
+		return err
 	}
+	return nil
 }
 
 var _ = AfterSuite(func() {
-	if skipTest {
-		return
-	}
-
 	ctx := context.Background()
 	b, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{Prefix: "x/"})
 	Expect(err).NotTo(HaveOccurred())
