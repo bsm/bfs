@@ -13,7 +13,7 @@ func ExampleInMem() {
 	bucket := bfs.NewInMem()
 
 	// Write object
-	o1, err := bucket.Create(ctx, "nested/file.txt")
+	o1, err := bucket.Create(ctx, "nested/file.txt", nil)
 	if err != nil {
 		panic(err)
 	}

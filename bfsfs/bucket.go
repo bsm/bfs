@@ -80,7 +80,7 @@ func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 }
 
 // Create implements bfs.Bucket
-func (b *bucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
+func (b *bucket) Create(ctx context.Context, name string, _ *bfs.WriteOptions) (io.WriteCloser, error) {
 	f, err := openAtomicFile(ctx, b.fullPath(name), b.tmpDir)
 	if err != nil {
 		return nil, normError(err)

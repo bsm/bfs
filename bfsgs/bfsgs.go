@@ -136,9 +136,11 @@ func (b *gsBucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 	}
 
 	return &bfs.MetaInfo{
-		Name:    name,
-		Size:    attrs.Size,
-		ModTime: attrs.Updated,
+		Name:        name,
+		Size:        attrs.Size,
+		ModTime:     attrs.Updated,
+		ContentType: attrs.ContentType,
+		Metadata:    attrs.Metadata,
 	}, nil
 }
 
@@ -150,10 +152,12 @@ func (b *gsBucket) Open(ctx context.Context, name string) (io.ReadCloser, error)
 }
 
 // Create implements bfs.Bucket.
-func (b *gsBucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
+func (b *gsBucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (io.WriteCloser, error) {
 	obj := b.bucket.Object(b.withPrefix(name))
 	wrt := obj.NewWriter(ctx)
 	wrt.PredefinedACL = b.config.PredefinedACL
+	wrt.ContentType = opts.GetContentType()
+	wrt.Metadata = opts.GetMetadata()
 	return wrt, nil
 }
 

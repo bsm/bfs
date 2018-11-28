@@ -20,14 +20,13 @@ func Lint(data *Data) func() {
 	var ctx = context.Background()
 
 	return func() {
-
 		BeforeEach(func() {
 			subject = data.Subject
 			readonly = data.Readonly
 		})
 
 		It("should write", func() {
-			blank, err := subject.Create(ctx, "blank.txt")
+			blank, err := subject.Create(ctx, "blank.txt", nil)
 			Expect(err).NotTo(HaveOccurred())
 			defer blank.Close()
 
@@ -124,14 +123,14 @@ func Lint(data *Data) func() {
 }
 
 func writeTestData(bucket bfs.Bucket, name string) error {
-	return bfs.WriteObject(bucket, context.Background(), name, []byte("TESTDATA"))
+	return bfs.WriteObject(bucket, context.Background(), name, []byte("TESTDATA"), nil)
 }
 
 func whenDrained(m OmegaMatcher) OmegaMatcher {
 	return WithTransform(func(iter bfs.Iterator) []string {
 		defer iter.Close()
 
-		entries := make([]string, 0)
+		var entries []string
 		for iter.Next() {
 			entries = append(entries, iter.Name())
 		}

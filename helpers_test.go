@@ -17,7 +17,7 @@ var _ = Describe("Helpers", func() {
 	})
 
 	It("should write objects", func() {
-		err := bfs.WriteObject(bucket, ctx, "path/to/file", []byte("testdata"))
+		err := bfs.WriteObject(bucket, ctx, "path/to/file", []byte("testdata"), nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(bucket.ObjectSizes()).
@@ -25,10 +25,10 @@ var _ = Describe("Helpers", func() {
 	})
 
 	It("should copy objects", func() {
-		err := bfs.WriteObject(bucket, ctx, "src.txt", []byte("testdata"))
+		err := bfs.WriteObject(bucket, ctx, "src.txt", []byte("testdata"), nil)
 		Expect(err).NotTo(HaveOccurred())
 
-		err = bfs.CopyObject(bucket, ctx, "src.txt", "dst.txt")
+		err = bfs.CopyObject(bucket, ctx, "src.txt", "dst.txt", nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(bucket.ObjectSizes()).

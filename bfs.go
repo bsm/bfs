@@ -30,7 +30,7 @@ type Bucket interface {
 	Open(ctx context.Context, name string) (io.ReadCloser, error)
 
 	// Create creates/opens a object for writing.
-	Create(ctx context.Context, name string) (io.WriteCloser, error)
+	Create(ctx context.Context, name string, opts *WriteOptions) (io.WriteCloser, error)
 
 	// Remove removes a object.
 	Remove(ctx context.Context, name string) error
@@ -39,11 +39,35 @@ type Bucket interface {
 	Close() error
 }
 
+// WriteOptions provide optional configuration when creating/writing objects.
+type WriteOptions struct {
+	ContentType string
+	Metadata    map[string]string
+}
+
+// GetContentType returns a content type.
+func (o *WriteOptions) GetContentType() string {
+	if o != nil {
+		return o.ContentType
+	}
+	return ""
+}
+
+// GetMetadata returns a content type.
+func (o *WriteOptions) GetMetadata() map[string]string {
+	if o != nil {
+		return o.Metadata
+	}
+	return nil
+}
+
 // MetaInfo contains meta information about an object.
 type MetaInfo struct {
-	Name    string    // base name of the object
-	Size    int64     // length of the content in bytes
-	ModTime time.Time // modification time
+	Name        string            // base name of the object
+	Size        int64             // length of the content in bytes
+	ModTime     time.Time         // modification time
+	ContentType string            // optional content type
+	Metadata    map[string]string // optional metadata
 }
 
 // Iterator iterates over objects

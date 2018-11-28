@@ -6,8 +6,8 @@ import (
 )
 
 // WriteObject is a quick write helper.
-func WriteObject(bucket Bucket, ctx context.Context, name string, data []byte) error {
-	w, err := bucket.Create(ctx, name)
+func WriteObject(bucket Bucket, ctx context.Context, name string, data []byte, opts *WriteOptions) error {
+	w, err := bucket.Create(ctx, name, opts)
 	if err != nil {
 		return err
 	}
@@ -20,7 +20,7 @@ func WriteObject(bucket Bucket, ctx context.Context, name string, data []byte) e
 }
 
 // CopyObject is a quick helper to copy objects within the same bucket.
-func CopyObject(bucket Bucket, ctx context.Context, src, dst string) error {
+func CopyObject(bucket Bucket, ctx context.Context, src, dst string, dstOpts *WriteOptions) error {
 	if cp, ok := bucket.(supportsCopying); ok {
 		return cp.Copy(ctx, src, dst)
 	}
@@ -31,7 +31,7 @@ func CopyObject(bucket Bucket, ctx context.Context, src, dst string) error {
 	}
 	defer r.Close()
 
-	w, err := bucket.Create(ctx, dst)
+	w, err := bucket.Create(ctx, dst, dstOpts)
 	if err != nil {
 		return err
 	}

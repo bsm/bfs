@@ -49,11 +49,7 @@ func (b *InMem) Head(_ context.Context, name string) (*MetaInfo, error) {
 		return nil, ErrNotFound
 	}
 
-	return &MetaInfo{
-		Name:    name,
-		Size:    obj.Size(),
-		ModTime: obj.modTime,
-	}, nil
+	return &obj.info, nil
 }
 
 // Open implements Bucket.
@@ -71,8 +67,13 @@ func (b *InMem) Open(_ context.Context, name string) (io.ReadCloser, error) {
 }
 
 // Create implements Bucket.
-func (b *InMem) Create(ctx context.Context, name string) (io.WriteCloser, error) {
-	return &inMemWriter{ctx: ctx, bucket: b, name: name}, nil
+func (b *InMem) Create(ctx context.Context, name string, opts *WriteOptions) (io.WriteCloser, error) {
+	return &inMemWriter{
+		ctx:    ctx,
+		bucket: b,
+		name:   name,
+		opts:   opts,
+	}, nil
 }
 
 // Remove implements Bucket.
@@ -99,21 +100,27 @@ func (b *InMem) ObjectSizes() map[string]int64 {
 // Close implements Bucket.
 func (*InMem) Close() error { return nil }
 
-func (b *InMem) store(name string, data []byte) {
+func (b *InMem) store(name string, data []byte, opts *WriteOptions) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	b.objects[name] = &inMemObject{
-		data:    data,
-		modTime: time.Now(),
+		data: data,
+		info: MetaInfo{
+			Name:        name,
+			Size:        int64(len(data)),
+			ModTime:     time.Now(),
+			ContentType: opts.GetContentType(),
+			Metadata:    opts.GetMetadata(),
+		},
 	}
 }
 
 // --------------------------------------------------------
 
 type inMemObject struct {
-	data    []byte
-	modTime time.Time
+	data []byte
+	info MetaInfo
 }
 
 func (o *inMemObject) Size() int64 {
@@ -130,6 +137,7 @@ type inMemWriter struct {
 	ctx    context.Context
 	bucket *InMem
 	name   string
+	opts   *WriteOptions
 }
 
 func (w *inMemWriter) Close() error {
@@ -139,7 +147,7 @@ func (w *inMemWriter) Close() error {
 	default:
 	}
 
-	w.bucket.store(w.name, w.Bytes())
+	w.bucket.store(w.name, w.Bytes(), w.opts)
 	return nil
 }
 

@@ -2,40 +2,35 @@ package bfsgs_test
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
-	"cloud.google.com/go/storage"
 	"github.com/bsm/bfs/bfsgs"
 	"github.com/bsm/bfs/testdata/lint"
-	"google.golang.org/api/iterator"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-const (
-	testBucketName = "bsm-bfs-unittest"
-)
+const bucketName = "bsm-bfs-unittest"
 
 var _ = Describe("Bucket", func() {
 	var data = lint.Data{}
 
 	BeforeEach(func() {
-		if os.Getenv("BFSGS_TEST") == "" {
-			Skip("test is disabled, enable via BFSGS_TEST")
+		if skipTest {
+			Skip("test is disabled, could not connect to test bucket")
 		}
 
 		ctx := context.Background()
 
-		subject, err := bfsgs.New(ctx, testBucketName, &bfsgs.Config{
+		subject, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{
 			Prefix: "x/" + strconv.FormatInt(time.Now().UnixNano(), 10),
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		readonly, err := bfsgs.New(ctx, testBucketName, &bfsgs.Config{
+		readonly, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{
 			Prefix: "m/",
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -54,26 +49,39 @@ func TestSuite(t *testing.T) {
 	RunSpecs(t, "bfs/bfsgs")
 }
 
+var skipTest bool
+
+func init() {
+	ctx := context.Background()
+	b, err := bfsgs.New(ctx, bucketName, nil)
+	if err != nil {
+		skipTest = true
+		return
+	}
+	defer b.Close()
+
+	if _, err := b.Glob(ctx, "*"); err != nil {
+		skipTest = true
+		return
+	}
+}
+
 var _ = AfterSuite(func() {
-	if os.Getenv("BFSGS_TEST") == "" {
+	if skipTest {
 		return
 	}
 
 	ctx := context.Background()
-	client, err := storage.NewClient(ctx)
+	b, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{Prefix: "x/"})
 	Expect(err).NotTo(HaveOccurred())
+	defer b.Close()
 
-	bucket := client.Bucket(testBucketName)
-	iter := bucket.Objects(ctx, &storage.Query{
-		Prefix: "x/",
-	})
+	it, err := b.Glob(ctx, "**")
+	Expect(err).NotTo(HaveOccurred())
+	defer it.Close()
 
-	for {
-		attrs, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		Expect(err).NotTo(HaveOccurred())
-		Expect(bucket.Object(attrs.Name).Delete(ctx)).To(Succeed())
+	for it.Next() {
+		Expect(b.Remove(ctx, it.Name())).To(Succeed())
 	}
+	Expect(it.Error()).NotTo(HaveOccurred())
 })

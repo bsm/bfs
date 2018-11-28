@@ -1,14 +1,12 @@
 package bfss3_test
 
 import (
-	"os"
+	"context"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/bsm/bfs/bfss3"
 	"github.com/bsm/bfs/testdata/lint"
 
@@ -16,29 +14,23 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const (
-	testAWSRegion  = "us-east-1"
-	testBucketName = "bsm-bfs-unittest"
-)
+const bucketName = "bsm-bfs-unittest"
+
+var awsConfig = aws.Config{Region: aws.String("us-east-1")}
 
 var _ = Describe("Bucket", func() {
 	var data = lint.Data{}
 
 	BeforeEach(func() {
-		if os.Getenv("BFSS3_TEST") == "" {
-			Skip("test is disabled, enable via BFSS3_TEST")
+		if skipTest {
+			Skip("test is disabled, could not connect to test bucket")
 		}
 
-		subject, err := bfss3.New(testBucketName, &bfss3.Config{
-			Prefix: "x/" + strconv.FormatInt(time.Now().UnixNano(), 10),
-			AWS:    aws.Config{Region: aws.String(testAWSRegion)},
-		})
+		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		subject, err := bfss3.New(bucketName, &bfss3.Config{Prefix: prefix, AWS: awsConfig})
 		Expect(err).NotTo(HaveOccurred())
 
-		readonly, err := bfss3.New(testBucketName, &bfss3.Config{
-			Prefix: "m/",
-			AWS:    aws.Config{Region: aws.String(testAWSRegion)},
-		})
+		readonly, err := bfss3.New(bucketName, &bfss3.Config{Prefix: "m/", AWS: awsConfig})
 		Expect(err).NotTo(HaveOccurred())
 
 		data.Subject = subject
@@ -55,29 +47,39 @@ func TestSuite(t *testing.T) {
 	RunSpecs(t, "bfs/bfss3")
 }
 
+var skipTest bool
+
+func init() {
+	ctx := context.Background()
+	b, err := bfss3.New(bucketName, &bfss3.Config{AWS: awsConfig})
+	if err != nil {
+		skipTest = true
+		return
+	}
+	defer b.Close()
+
+	if _, err := b.Glob(ctx, "*"); err != nil {
+		skipTest = true
+		return
+	}
+}
+
 var _ = AfterSuite(func() {
-	if os.Getenv("BFSS3_TEST") == "" {
+	if skipTest {
 		return
 	}
 
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(testAWSRegion),
-	})
+	ctx := context.Background()
+	b, err := bfss3.New(bucketName, &bfss3.Config{Prefix: "x/", AWS: awsConfig})
 	Expect(err).NotTo(HaveOccurred())
+	defer b.Close()
 
-	s3api := s3.New(sess)
-	err = s3api.ListObjectsV2Pages(&s3.ListObjectsV2Input{
-		Bucket: aws.String(testBucketName),
-		Prefix: aws.String("x"),
-	}, func(page *s3.ListObjectsV2Output, _ bool) bool {
-		for _, obj := range page.Contents {
-			_, err := s3api.DeleteObject(&s3.DeleteObjectInput{
-				Bucket: aws.String(testBucketName),
-				Key:    obj.Key,
-			})
-			Expect(err).NotTo(HaveOccurred())
-		}
-		return true
-	})
+	it, err := b.Glob(ctx, "**")
 	Expect(err).NotTo(HaveOccurred())
+	defer it.Close()
+
+	for it.Next() {
+		Expect(b.Remove(ctx, it.Name())).To(Succeed())
+	}
+	Expect(it.Error()).NotTo(HaveOccurred())
 })

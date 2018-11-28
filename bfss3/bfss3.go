@@ -177,9 +177,11 @@ func (b *s3Bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 	}
 
 	return &bfs.MetaInfo{
-		Name:    name,
-		Size:    aws.Int64Value(resp.ContentLength),
-		ModTime: aws.TimeValue(resp.LastModified),
+		Name:        name,
+		Size:        aws.Int64Value(resp.ContentLength),
+		ModTime:     aws.TimeValue(resp.LastModified),
+		ContentType: aws.StringValue(resp.ContentType),
+		Metadata:    aws.StringValueMap(resp.Metadata),
 	}, nil
 }
 
@@ -199,7 +201,7 @@ func (b *s3Bucket) Open(ctx context.Context, name string) (io.ReadCloser, error)
 }
 
 // Create implements bfs.Bucket.
-func (b *s3Bucket) Create(ctx context.Context, name string) (io.WriteCloser, error) {
+func (b *s3Bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (io.WriteCloser, error) {
 	f, err := ioutil.TempFile("", "bfs-s3")
 	if err != nil {
 		return nil, err
@@ -210,6 +212,7 @@ func (b *s3Bucket) Create(ctx context.Context, name string) (io.WriteCloser, err
 		ctx:    ctx,
 		bucket: b,
 		name:   name,
+		opts:   opts,
 	}, nil
 }
 
@@ -245,6 +248,7 @@ type writer struct {
 	ctx    context.Context
 	bucket *s3Bucket
 	name   string
+	opts   *bfs.WriteOptions
 
 	closeOnce sync.Once
 }
@@ -269,10 +273,12 @@ func (w *writer) Close() (err error) {
 		defer file.Close()
 
 		_, err = w.bucket.PutObjectWithContext(w.ctx, &s3.PutObjectInput{
-			ACL:    aws.String(w.bucket.config.ACL),
-			Bucket: aws.String(w.bucket.bucket),
-			Key:    aws.String(w.bucket.withPrefix(w.name)),
-			Body:   file,
+			ACL:         aws.String(w.bucket.config.ACL),
+			Bucket:      aws.String(w.bucket.bucket),
+			Key:         aws.String(w.bucket.withPrefix(w.name)),
+			Body:        file,
+			ContentType: aws.String(w.opts.GetContentType()),
+			Metadata:    aws.StringMap(w.opts.GetMetadata()),
 		})
 	})
 	return

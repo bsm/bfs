@@ -31,7 +31,7 @@ var _ = Describe("Object", func() {
 		_, err = subject.Open(ctx)
 		Expect(err).To(Equal(bfs.ErrNotFound))
 
-		w, err := subject.Create(ctx)
+		w, err := subject.Create(ctx, nil)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(w.Write([]byte("TESTDATA"))).To(Equal(8))
 		Expect(w.Close()).To(Succeed())

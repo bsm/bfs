@@ -17,7 +17,7 @@ type ObjectHandle interface {
 	// Open opens an object for reading.
 	Open(context.Context) (io.ReadCloser, error)
 	// Create creates/opens a object for writing.
-	Create(context.Context) (io.WriteCloser, error)
+	Create(context.Context, *WriteOptions) (io.WriteCloser, error)
 	// Remove removes a object.
 	Remove(context.Context) error
 	// Close closes the object.
@@ -78,8 +78,8 @@ func (o *Object) Open(ctx context.Context) (io.ReadCloser, error) {
 }
 
 // Create creates/opens a object for writing.
-func (o *Object) Create(ctx context.Context) (io.WriteCloser, error) {
-	return o.bucket.Create(ctx, o.name)
+func (o *Object) Create(ctx context.Context, opts *WriteOptions) (io.WriteCloser, error) {
+	return o.bucket.Create(ctx, o.name, opts)
 }
 
 // Remove removes a object.
