@@ -1,17 +1,26 @@
 package bfsfs
 
-// iterator implements an iterator over file path list.
+import (
+	"github.com/bsm/bfs"
+)
+
+// iterator implements an iterator over file list.
 type iterator struct {
-	names []string // hold relative (non-rooted) file names/paths
+	files []file // hold relative (non-rooted) files
 	index int
+}
+
+type file struct {
+	name string
+	meta *bfs.MetaInfo
 }
 
 // newIterator constructs new iterator.
 //
 // WARNING! Iterator uses provided names slice, so it shouldn't be mutated after being passed here.
-func newIterator(names []string) *iterator {
+func newIterator(files []file) *iterator {
 	return &iterator{
-		names: names,
+		files: files,
 		index: -1,
 	}
 }
@@ -25,9 +34,17 @@ func (it *iterator) Next() bool {
 // Name returns the name at the current cursor position.
 func (it *iterator) Name() string {
 	if it.isValid() {
-		return it.names[it.index]
+		return it.files[it.index].name
 	}
 	return ""
+}
+
+// Meta returns the *bfs.MetaInfo at the current cursor position.
+func (it *iterator) Meta() *bfs.MetaInfo {
+	if it.isValid() {
+		return it.files[it.index].meta
+	}
+	return nil
 }
 
 // Error returns the last iterator error, if any.
@@ -37,11 +54,11 @@ func (it *iterator) Error() error {
 
 // Close closes the iterator, should always be deferred.
 func (it *iterator) Close() error {
-	it.names = nil
+	it.files = nil
 	return nil
 }
 
 // isValid tells if current iterator is valid (not exhausted).
 func (it *iterator) isValid() bool {
-	return it.index < len(it.names)
+	return it.index < len(it.files)
 }

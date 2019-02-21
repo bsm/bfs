@@ -334,7 +334,12 @@ type iterator struct {
 	err  error
 	last bool // indicates last page
 	pos  int
-	page []string
+	page []object
+}
+
+type object struct {
+	key  string
+	meta *bfs.MetaInfo
 }
 
 func (i *iterator) Close() error {
@@ -345,9 +350,16 @@ func (i *iterator) Close() error {
 
 func (i *iterator) Name() string {
 	if i.pos < len(i.page) {
-		return i.page[i.pos]
+		return i.page[i.pos].key
 	}
 	return ""
+}
+
+func (i *iterator) Meta() *bfs.MetaInfo {
+	if i.pos < len(i.page) {
+		return i.page[i.pos].meta
+	}
+	return nil
 }
 
 func (i *iterator) Next() bool {
@@ -397,7 +409,17 @@ func (i *iterator) fetchNextPage() error {
 		if ok, err := doublestar.Match(i.pattern, name); err != nil {
 			return err
 		} else if ok {
-			i.page = append(i.page, name)
+			i.page = append(
+				i.page,
+				object{
+					name,
+					&bfs.MetaInfo{
+						Name:    name,
+						Size:    aws.Int64Value(obj.Size),
+						ModTime: aws.TimeValue(obj.LastModified),
+					},
+				},
+			)
 		}
 	}
 	return nil

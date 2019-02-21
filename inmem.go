@@ -28,12 +28,12 @@ func (b *InMem) Glob(_ context.Context, pattern string) (Iterator, error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
-	var matches []string
+	var matches []*inMemObject
 	for key := range b.objects {
 		if ok, err := doublestar.Match(pattern, key); err != nil {
 			return nil, err
 		} else if ok {
-			matches = append(matches, key)
+			matches = append(matches, b.objects[key])
 		}
 	}
 	return &inMemIterator{entries: matches, pos: -1}, nil
@@ -152,7 +152,7 @@ func (w *inMemWriter) Close() error {
 }
 
 type inMemIterator struct {
-	entries []string
+	entries []*inMemObject
 	pos     int
 }
 
@@ -163,10 +163,19 @@ func (i *inMemIterator) Next() bool {
 
 func (i *inMemIterator) Name() string {
 	if i.pos < len(i.entries) {
-		return i.entries[i.pos]
+		return i.entries[i.pos].info.Name
 	}
 	return ""
 }
+
+func (i *inMemIterator) Meta() *MetaInfo {
+	if i.pos < len(i.entries) {
+		meta := i.entries[i.pos].info
+		return &meta
+	}
+	return nil
+}
+
 func (*inMemIterator) Error() error { return nil }
 
 func (i *inMemIterator) Close() error {

@@ -45,13 +45,14 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		return nil, normError(err)
 	}
 
-	files := matches[:0]
+	files := make([]file, 0)
 	for _, match := range matches {
 		if fi, err := os.Stat(match); err != nil {
 			return nil, normError(err)
 		} else if fi.Mode().IsRegular() {
 			fsPath := strings.TrimPrefix(match, b.fsRoot) // filesystem path (with OS-specific separators)
-			files = append(files, filepath.ToSlash(fsPath))
+			name := filepath.ToSlash(fsPath)
+			files = append(files, file{name, newMetaInfo(name, fi)})
 		}
 	}
 	return newIterator(files), nil
@@ -63,11 +64,15 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 	if err != nil {
 		return nil, normError(err)
 	}
+	return newMetaInfo(name, fi), nil
+}
+
+func newMetaInfo(name string, fi os.FileInfo) *bfs.MetaInfo {
 	return &bfs.MetaInfo{
 		Name:    name,
 		Size:    fi.Size(),
 		ModTime: fi.ModTime(),
-	}, nil
+	}
 }
 
 // Open implements bfs.Bucket

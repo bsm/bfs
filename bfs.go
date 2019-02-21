@@ -76,6 +76,8 @@ type Iterator interface {
 	Next() bool
 	// Name returns the name at the current cursor position.
 	Name() string
+	// Meta returns the meta information for the current object.
+	Meta() *MetaInfo
 	// Error returns the last iterator error, if any.
 	Error() error
 	// Close closes the iterator, should always be deferred.
