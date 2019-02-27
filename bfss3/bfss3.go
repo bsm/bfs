@@ -176,13 +176,7 @@ func (b *s3Bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 		return nil, normError(err)
 	}
 
-	return &bfs.MetaInfo{
-		Name:        name,
-		Size:        aws.Int64Value(resp.ContentLength),
-		ModTime:     aws.TimeValue(resp.LastModified),
-		ContentType: aws.StringValue(resp.ContentType),
-		Metadata:    aws.StringValueMap(resp.Metadata),
-	}, nil
+	return newMetaInfoFromHead(name, resp), nil
 }
 
 // Open implements bfs.Bucket.
@@ -409,18 +403,35 @@ func (i *iterator) fetchNextPage() error {
 		if ok, err := doublestar.Match(i.pattern, name); err != nil {
 			return err
 		} else if ok {
-			i.page = append(
-				i.page,
-				object{
-					name,
-					&bfs.MetaInfo{
-						Name:    name,
-						Size:    aws.Int64Value(obj.Size),
-						ModTime: aws.TimeValue(obj.LastModified),
-					},
-				},
-			)
+			i.page = append(i.page, object{
+				key:  name,
+				meta: newMetaInfoFromObject(name, obj),
+			})
 		}
 	}
 	return nil
+}
+
+func newMetaInfoFromHead(
+	name string,
+	resp *s3.HeadObjectOutput,
+) *bfs.MetaInfo {
+	return &bfs.MetaInfo{
+		Name:        name,
+		Size:        aws.Int64Value(resp.ContentLength),
+		ModTime:     aws.TimeValue(resp.LastModified),
+		ContentType: aws.StringValue(resp.ContentType),
+		Metadata:    aws.StringValueMap(resp.Metadata),
+	}
+}
+
+func newMetaInfoFromObject(
+	name string,
+	obj *s3.Object,
+) *bfs.MetaInfo {
+	return &bfs.MetaInfo{
+		Name:    name,
+		Size:    aws.Int64Value(obj.Size),
+		ModTime: aws.TimeValue(obj.LastModified),
+	}
 }

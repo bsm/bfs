@@ -231,7 +231,7 @@ func (i *iterator) Next() bool {
 			i.err = err
 			return false
 		} else if ok {
-			i.current = object{name, newMetaInfo(name, obj)}
+			i.current = object{name: name, meta: newMetaInfo(name, obj)}
 			return true
 		}
 	}
