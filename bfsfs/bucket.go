@@ -45,13 +45,18 @@ func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 		return nil, normError(err)
 	}
 
-	files := matches[:0]
+	files := make([]file, 0, len(matches))
 	for _, match := range matches {
 		if fi, err := os.Stat(match); err != nil {
 			return nil, normError(err)
 		} else if fi.Mode().IsRegular() {
 			fsPath := strings.TrimPrefix(match, b.fsRoot) // filesystem path (with OS-specific separators)
-			files = append(files, filepath.ToSlash(fsPath))
+			name := filepath.ToSlash(fsPath)
+			files = append(files, file{
+				name:    name,
+				size:    fi.Size(),
+				modTime: fi.ModTime(),
+			})
 		}
 	}
 	return newIterator(files), nil

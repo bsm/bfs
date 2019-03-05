@@ -41,6 +41,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -334,7 +335,13 @@ type iterator struct {
 	err  error
 	last bool // indicates last page
 	pos  int
-	page []string
+	page []object
+}
+
+type object struct {
+	key     string
+	size    int64
+	modTime time.Time
 }
 
 func (i *iterator) Close() error {
@@ -345,9 +352,23 @@ func (i *iterator) Close() error {
 
 func (i *iterator) Name() string {
 	if i.pos < len(i.page) {
-		return i.page[i.pos]
+		return i.page[i.pos].key
 	}
 	return ""
+}
+
+func (i *iterator) Size() int64 {
+	if i.pos < len(i.page) {
+		return i.page[i.pos].size
+	}
+	return 0
+}
+
+func (i *iterator) ModTime() time.Time {
+	if i.pos < len(i.page) {
+		return i.page[i.pos].modTime
+	}
+	return time.Time{}
 }
 
 func (i *iterator) Next() bool {
@@ -397,7 +418,11 @@ func (i *iterator) fetchNextPage() error {
 		if ok, err := doublestar.Match(i.pattern, name); err != nil {
 			return err
 		} else if ok {
-			i.page = append(i.page, name)
+			i.page = append(i.page, object{
+				key:     name,
+				size:    aws.Int64Value(obj.Size),
+				modTime: aws.TimeValue(obj.LastModified),
+			})
 		}
 	}
 	return nil

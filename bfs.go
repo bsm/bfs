@@ -66,8 +66,8 @@ type MetaInfo struct {
 	Name        string            // base name of the object
 	Size        int64             // length of the content in bytes
 	ModTime     time.Time         // modification time
-	ContentType string            // optional content type
-	Metadata    map[string]string // optional metadata
+	ContentType string            // content type
+	Metadata    map[string]string // metadata
 }
 
 // Iterator iterates over objects
@@ -76,6 +76,10 @@ type Iterator interface {
 	Next() bool
 	// Name returns the name at the current cursor position.
 	Name() string
+	// Size returns the length of the content in bytes for the current object.
+	Size() int64
+	// ModTime returns the modification time for the current object.
+	ModTime() time.Time
 	// Error returns the last iterator error, if any.
 	Error() error
 	// Close closes the iterator, should always be deferred.

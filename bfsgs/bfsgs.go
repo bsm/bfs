@@ -31,6 +31,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/bmatcuk/doublestar"
@@ -197,12 +198,20 @@ type iterator struct {
 	parent  *gsBucket
 	iter    *storage.ObjectIterator
 	pattern string
-	current string
+	current object
 	err     error
 }
 
-func (*iterator) Close() error   { return nil }
-func (i *iterator) Name() string { return i.current }
+type object struct {
+	name    string
+	size    int64
+	modTime time.Time
+}
+
+func (*iterator) Close() error         { return nil }
+func (i *iterator) Name() string       { return i.current.name }
+func (i *iterator) Size() int64        { return i.current.size }
+func (i *iterator) ModTime() time.Time { return i.current.modTime }
 
 func (i *iterator) Next() bool {
 	if i.err != nil {
@@ -221,7 +230,11 @@ func (i *iterator) Next() bool {
 			i.err = err
 			return false
 		} else if ok {
-			i.current = name
+			i.current = object{
+				name:    name,
+				size:    obj.Size,
+				modTime: obj.Updated,
+			}
 			return true
 		}
 	}
