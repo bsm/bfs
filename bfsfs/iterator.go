@@ -1,7 +1,7 @@
 package bfsfs
 
 import (
-	"github.com/bsm/bfs"
+	"time"
 )
 
 // iterator implements an iterator over file list.
@@ -11,8 +11,9 @@ type iterator struct {
 }
 
 type file struct {
-	name string
-	meta *bfs.MetaInfo
+	name    string
+	size    int64
+	modTime time.Time
 }
 
 // newIterator constructs new iterator.
@@ -39,12 +40,20 @@ func (it *iterator) Name() string {
 	return ""
 }
 
-// Meta returns the *bfs.MetaInfo at the current cursor position.
-func (it *iterator) Meta() *bfs.MetaInfo {
+// Size returns the content length in bytes at the current cursor position.
+func (it *iterator) Size() int64 {
 	if it.isValid() {
-		return it.files[it.index].meta
+		return it.files[it.index].size
 	}
-	return nil
+	return 0
+}
+
+// ModTime returns the modification time at the current cursor position.
+func (it *iterator) ModTime() time.Time {
+	if it.isValid() {
+		return it.files[it.index].modTime
+	}
+	return time.Time{}
 }
 
 // Error returns the last iterator error, if any.

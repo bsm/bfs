@@ -41,6 +41,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -176,7 +177,13 @@ func (b *s3Bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 		return nil, normError(err)
 	}
 
-	return newMetaInfoFromHead(name, resp), nil
+	return &bfs.MetaInfo{
+		Name:        name,
+		Size:        aws.Int64Value(resp.ContentLength),
+		ModTime:     aws.TimeValue(resp.LastModified),
+		ContentType: aws.StringValue(resp.ContentType),
+		Metadata:    aws.StringValueMap(resp.Metadata),
+	}, nil
 }
 
 // Open implements bfs.Bucket.
@@ -332,8 +339,9 @@ type iterator struct {
 }
 
 type object struct {
-	key  string
-	meta *bfs.MetaInfo
+	key     string
+	size    int64
+	modTime time.Time
 }
 
 func (i *iterator) Close() error {
@@ -349,11 +357,18 @@ func (i *iterator) Name() string {
 	return ""
 }
 
-func (i *iterator) Meta() *bfs.MetaInfo {
+func (i *iterator) Size() int64 {
 	if i.pos < len(i.page) {
-		return i.page[i.pos].meta
+		return i.page[i.pos].size
 	}
-	return nil
+	return 0
+}
+
+func (i *iterator) ModTime() time.Time {
+	if i.pos < len(i.page) {
+		return i.page[i.pos].modTime
+	}
+	return time.Time{}
 }
 
 func (i *iterator) Next() bool {
@@ -404,34 +419,11 @@ func (i *iterator) fetchNextPage() error {
 			return err
 		} else if ok {
 			i.page = append(i.page, object{
-				key:  name,
-				meta: newMetaInfoFromObject(name, obj),
+				key:     name,
+				size:    aws.Int64Value(obj.Size),
+				modTime: aws.TimeValue(obj.LastModified),
 			})
 		}
 	}
 	return nil
-}
-
-func newMetaInfoFromHead(
-	name string,
-	resp *s3.HeadObjectOutput,
-) *bfs.MetaInfo {
-	return &bfs.MetaInfo{
-		Name:        name,
-		Size:        aws.Int64Value(resp.ContentLength),
-		ModTime:     aws.TimeValue(resp.LastModified),
-		ContentType: aws.StringValue(resp.ContentType),
-		Metadata:    aws.StringValueMap(resp.Metadata),
-	}
-}
-
-func newMetaInfoFromObject(
-	name string,
-	obj *s3.Object,
-) *bfs.MetaInfo {
-	return &bfs.MetaInfo{
-		Name:    name,
-		Size:    aws.Int64Value(obj.Size),
-		ModTime: aws.TimeValue(obj.LastModified),
-	}
 }

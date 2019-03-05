@@ -168,12 +168,18 @@ func (i *inMemIterator) Name() string {
 	return ""
 }
 
-func (i *inMemIterator) Meta() *MetaInfo {
+func (i *inMemIterator) Size() int64 {
 	if i.pos < len(i.entries) {
-		meta := i.entries[i.pos].info
-		return &meta
+		return i.entries[i.pos].info.Size
 	}
-	return nil
+	return 0
+}
+
+func (i *inMemIterator) ModTime() time.Time {
+	if i.pos < len(i.entries) {
+		return i.entries[i.pos].info.ModTime
+	}
+	return time.Time{}
 }
 
 func (*inMemIterator) Error() error { return nil }
