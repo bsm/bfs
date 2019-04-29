@@ -11,16 +11,15 @@
 //   func main() {
 //     ctx := context.Background()
 //
-//     u, _ := url.Parse("gs://bucket?prefix=custom%2Fprefix")
+//     u, _ := url.Parse("gs://bucket/a")
 //     bucket, _ := bfs.Resolve(ctx, u)
 //
-//     f, _ := bucket.Open(ctx, "file/within/prefix.txt")
+//     f, _ := bucket.Open(ctx, "b/c.txt") // opens gs://bucket/a/b/c.txt
 //     ...
 //   }
 //
 // bfs.Resolve supports the following query parameters:
 //
-//   prefix      - path prefix/namespace within the bucket
 //   scopes      - custom scopes
 //   credentials - path to custom credentials file
 //
@@ -30,6 +29,7 @@ import (
 	"context"
 	"io"
 	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -44,10 +44,15 @@ import (
 func init() {
 	bfs.Register("gs", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
-		conf := &Config{
-			Prefix: strings.Trim(query.Get("prefix"), "/"),
+
+		prefix := strings.Trim(path.Clean(u.Path), "/")
+		if prefix == "" {
+			if s := strings.Trim(path.Clean(query.Get("prefix")), "/"); s != "" {
+				prefix = s
+			}
 		}
 
+		conf := &Config{Prefix: prefix}
 		if s := query.Get("scopes"); s != "" {
 			conf.Options = append(conf.Options, option.WithScopes(strings.Split(s, ",")...))
 		}
