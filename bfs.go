@@ -115,7 +115,7 @@ func Resolve(ctx context.Context, u *url.URL) (Bucket, error) {
 	resv, ok := registry[u.Scheme]
 	registryLock.Unlock()
 	if !ok {
-		return nil, fmt.Errorf("bfs: unkown URL scheme %q", u.Scheme)
+		return nil, fmt.Errorf("bfs: unknown URL scheme %q", u.Scheme)
 	}
 
 	return resv(ctx, u)

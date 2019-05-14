@@ -29,7 +29,6 @@ import (
 	"context"
 	"io"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -45,9 +44,9 @@ func init() {
 	bfs.Register("gs", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
 
-		prefix := strings.Trim(path.Clean(u.Path), "/")
+		prefix := strings.Trim(u.Path, "/")
 		if prefix == "" {
-			if s := strings.Trim(path.Clean(query.Get("prefix")), "/"); s != "" {
+			if s := strings.Trim(query.Get("prefix"), "/"); s != "" {
 				prefix = s
 			}
 		}

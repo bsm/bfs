@@ -77,9 +77,9 @@ func init() {
 			}
 		}
 
-		prefix := strings.Trim(path.Clean(u.Path), "/")
+		prefix := strings.Trim(u.Path, "/")
 		if prefix == "" {
-			if s := strings.Trim(path.Clean(query.Get("prefix")), "/"); s != "" {
+			if s := strings.Trim(query.Get("prefix"), "/"); s != "" {
 				prefix = s
 			}
 		}

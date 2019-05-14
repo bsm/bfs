@@ -2,6 +2,7 @@ package bfs
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/url"
 	"path"
@@ -40,6 +41,9 @@ func NewObject(ctx context.Context, fullURL string) (*Object, error) {
 
 	// store full path name and unset
 	name := strings.TrimPrefix(path.Clean(u.Path), "/")
+	if name == "." {
+		return nil, fmt.Errorf("bfs: invalid URL path %q", u.Path)
+	}
 	u.Path = "/"
 
 	// resolve bucket
