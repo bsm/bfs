@@ -12,8 +12,6 @@ bench/%: %
 bump-deps/%: %
 	@cd $< \
 		&& go get -u ./... \
-		&& sed -i 's/github\.com\/bsm\/bfs v.*$$/github.com\/bsm\/bfs v0.0.0/' go.mod \
-		&& go get \
 		&& go mod tidy
 
 vet: vet/. $(patsubst %/go.mod,vet/%,$(wildcard */go.mod))
