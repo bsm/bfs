@@ -48,6 +48,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
@@ -124,8 +125,9 @@ func (c *Config) norm() error {
 
 type s3Bucket struct {
 	s3iface.S3API
-	bucket string
-	config *Config
+	bucket   string
+	config   *Config
+	uploader *s3manager.Uploader
 }
 
 // New initiates an bfs.Bucket backed by S3.
@@ -136,10 +138,13 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 	}
 	config.norm()
 
+	client := s3.New(config.Session)
+
 	return &s3Bucket{
-		bucket: bucket,
-		config: config,
-		S3API:  s3.New(config.Session),
+		S3API:    client,
+		bucket:   bucket,
+		config:   config,
+		uploader: s3manager.NewUploaderWithClient(client),
 	}, nil
 }
 
@@ -279,7 +284,7 @@ func (w *writer) Close() (err error) {
 		}
 		defer file.Close()
 
-		_, err = w.bucket.PutObjectWithContext(w.ctx, &s3.PutObjectInput{
+		_, err = w.bucket.uploader.UploadWithContext(w.ctx, &s3manager.UploadInput{
 			ACL:         aws.String(w.bucket.config.ACL),
 			Bucket:      aws.String(w.bucket.bucket),
 			Key:         aws.String(w.bucket.withPrefix(w.name)),
