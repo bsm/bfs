@@ -44,11 +44,9 @@ func init() {
 	bfs.Register("gs", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
 
-		prefix := strings.Trim(u.Path, "/")
+		prefix := u.Path
 		if prefix == "" {
-			if s := strings.Trim(query.Get("prefix"), "/"); s != "" {
-				prefix = s
-			}
+			prefix = query.Get("prefix")
 		}
 
 		conf := &Config{Prefix: prefix}
@@ -73,7 +71,14 @@ type Config struct {
 	PredefinedACL string                // an optional predefined ACL string, e.g. "publicRead"
 }
 
-func (*Config) norm() {}
+func (c *Config) norm() error {
+	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
+	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
+		c.Prefix = c.Prefix + "/"
+	}
+
+	return nil
+}
 
 type gsBucket struct {
 	bucket *storage.BucketHandle
@@ -86,7 +91,9 @@ func New(ctx context.Context, bucket string, cfg *Config) (bfs.Bucket, error) {
 	if cfg != nil {
 		*config = *cfg
 	}
-	config.norm()
+	if err := config.norm(); err != nil {
+		return nil, err
+	}
 
 	client, err := storage.NewClient(ctx, config.Options...)
 	if err != nil {

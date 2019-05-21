@@ -78,11 +78,9 @@ func init() {
 			}
 		}
 
-		prefix := strings.Trim(u.Path, "/")
+		prefix := u.Path
 		if prefix == "" {
-			if s := strings.Trim(query.Get("prefix"), "/"); s != "" {
-				prefix = s
-			}
+			prefix = query.Get("prefix")
 		}
 
 		return New(u.Host, &Config{
@@ -120,6 +118,12 @@ func (c *Config) norm() error {
 			c.Session = sess
 		}
 	}
+
+	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
+	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
+		c.Prefix = c.Prefix + "/"
+	}
+
 	return nil
 }
 
@@ -136,7 +140,9 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 	if cfg != nil {
 		*config = *cfg
 	}
-	config.norm()
+	if err := config.norm(); err != nil {
+		return nil, err
+	}
 
 	client := s3.New(config.Session)
 

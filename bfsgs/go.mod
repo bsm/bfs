@@ -5,7 +5,7 @@ go 1.12
 require (
 	cloud.google.com/go v0.39.0
 	github.com/bmatcuk/doublestar v1.1.1
-	github.com/bsm/bfs v0.6.3
+	github.com/bsm/bfs v0.6.4
 	github.com/google/go-cmp v0.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
 	github.com/onsi/ginkgo v1.8.0
