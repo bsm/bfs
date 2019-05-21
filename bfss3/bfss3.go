@@ -48,6 +48,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
@@ -104,6 +105,8 @@ type Config struct {
 	// An optional custom session.
 	// If nil, a new session will be created using the AWS config.
 	Session *session.Session
+	// Optional configuration options for the Uploader used to send objects to S3.
+	UploaderOptions []func(*s3manager.Uploader)
 }
 
 func (c *Config) norm() error {
@@ -124,8 +127,9 @@ func (c *Config) norm() error {
 
 type s3Bucket struct {
 	s3iface.S3API
-	bucket string
-	config *Config
+	bucket   string
+	config   *Config
+	uploader *s3manager.Uploader
 }
 
 // New initiates an bfs.Bucket backed by S3.
@@ -137,9 +141,10 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 	config.norm()
 
 	return &s3Bucket{
-		bucket: bucket,
-		config: config,
-		S3API:  s3.New(config.Session),
+		bucket:   bucket,
+		config:   config,
+		S3API:    s3.New(config.Session),
+		uploader: s3manager.NewUploader(config.Session, config.UploaderOptions...),
 	}, nil
 }
 
@@ -279,7 +284,7 @@ func (w *writer) Close() (err error) {
 		}
 		defer file.Close()
 
-		_, err = w.bucket.PutObjectWithContext(w.ctx, &s3.PutObjectInput{
+		_, err = w.bucket.uploader.UploadWithContext(w.ctx, &s3manager.UploadInput{
 			ACL:         aws.String(w.bucket.config.ACL),
 			Bucket:      aws.String(w.bucket.bucket),
 			Key:         aws.String(w.bucket.withPrefix(w.name)),
