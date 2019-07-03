@@ -33,6 +33,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -57,10 +58,15 @@ import (
 // DefaultACL is the default ACL setting.
 const DefaultACL = "bucket-owner-full-control"
 
+// defaultHTTPClient is a global HTTP client with implicit GZIP compression disabled.
+var defaultHTTPClient = NewHTTPClient()
+
 func init() {
 	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
-		awscfg := aws.Config{}
+		awscfg := aws.Config{
+			HTTPClient: defaultHTTPClient,
+		}
 
 		if s := query.Get("aws_access_key_id"); s != "" {
 			awscfg.Credentials = credentials.NewStaticCredentials(
@@ -443,4 +449,31 @@ func (i *iterator) fetchNextPage() error {
 		}
 	}
 	return nil
+}
+
+// --------------------------------------------------------------------
+
+// NewHTTPClient returns a copy of net/http.DefaultClient with implicit GZIP compression disabled.
+//
+// It is intended to be used as aws.Config.HTTPClient.
+func NewHTTPClient() *http.Client {
+	// TODO(mxmCherry): replace this with `http.DefaultTransport.(*http.Transport).Clone()` when Go 1.13 is out: https://github.com/golang/go/issues/26013 , https://go-review.googlesource.com/c/go/+/174597/
+	t := &http.Transport{
+		// NOTE(mxmCherry): code copied because copying http.DefaultTransport variable itself copies its mutex as well (go vet)
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	t.DisableCompression = true
+
+	c := *http.DefaultClient
+	c.Transport = t
+	return &c
 }
