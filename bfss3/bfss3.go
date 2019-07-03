@@ -58,14 +58,10 @@ import (
 // DefaultACL is the default ACL setting.
 const DefaultACL = "bucket-owner-full-control"
 
-var defaultHTTPClient = newHTTPClientWithoutCompression()
-
 func init() {
 	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
-		awscfg := aws.Config{
-			HTTPClient: defaultHTTPClient,
-		}
+		awscfg := aws.Config{}
 
 		if s := query.Get("aws_access_key_id"); s != "" {
 			awscfg.Credentials = credentials.NewStaticCredentials(
@@ -116,7 +112,9 @@ func (c *Config) norm() error {
 	}
 
 	if c.Session == nil {
-		sess, err := session.NewSession(&c.AWS)
+		sess, err := session.NewSession(&c.AWS, &aws.Config{
+			HTTPClient: newHTTPClientWithoutCompression(),
+		})
 		if err != nil {
 			return err
 		} else {
@@ -127,10 +125,6 @@ func (c *Config) norm() error {
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
-	}
-
-	if c.AWS.HTTPClient == nil {
-		c.AWS.HTTPClient = defaultHTTPClient
 	}
 
 	return nil
