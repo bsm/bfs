@@ -450,9 +450,7 @@ func (i *iterator) fetchNextPage() error {
 
 // --------------------------------------------------------------------
 
-// newHTTPClientWithoutCompression returns a copy of net/http.DefaultClient with implicit GZIP compression disabled.
-//
-// It is intended to be used as aws.Config.HTTPClient.
+// newHTTPClientWithoutCompression returns an HTTP client with implicit GZIP compression disabled.
 func newHTTPClientWithoutCompression() *http.Client {
 	// TODO(mxmCherry): replace this with `http.DefaultTransport.(*http.Transport).Clone()` when Go 1.13 is out: https://github.com/golang/go/issues/26013 , https://go-review.googlesource.com/c/go/+/174597/
 	t := &http.Transport{
@@ -470,7 +468,7 @@ func newHTTPClientWithoutCompression() *http.Client {
 	}
 	t.DisableCompression = true
 
-	c := *http.DefaultClient
-	c.Transport = t
-	return &c
+	return &http.Client{
+		Transport: t,
+	}
 }
