@@ -58,8 +58,7 @@ import (
 // DefaultACL is the default ACL setting.
 const DefaultACL = "bucket-owner-full-control"
 
-// defaultHTTPClient is a global HTTP client with implicit GZIP compression disabled.
-var defaultHTTPClient = NewHTTPClient()
+var defaultHTTPClient = newHTTPClientWithoutCompression()
 
 func init() {
 	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
@@ -128,6 +127,10 @@ func (c *Config) norm() error {
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
+	}
+
+	if c.AWS.HTTPClient == nil {
+		c.AWS.HTTPClient = defaultHTTPClient
 	}
 
 	return nil
@@ -453,10 +456,10 @@ func (i *iterator) fetchNextPage() error {
 
 // --------------------------------------------------------------------
 
-// NewHTTPClient returns a copy of net/http.DefaultClient with implicit GZIP compression disabled.
+// newHTTPClientWithoutCompression returns a copy of net/http.DefaultClient with implicit GZIP compression disabled.
 //
 // It is intended to be used as aws.Config.HTTPClient.
-func NewHTTPClient() *http.Client {
+func newHTTPClientWithoutCompression() *http.Client {
 	// TODO(mxmCherry): replace this with `http.DefaultTransport.(*http.Transport).Clone()` when Go 1.13 is out: https://github.com/golang/go/issues/26013 , https://go-review.googlesource.com/c/go/+/174597/
 	t := &http.Transport{
 		// NOTE(mxmCherry): code copied because copying http.DefaultTransport variable itself copies its mutex as well (go vet)
