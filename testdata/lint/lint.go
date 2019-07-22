@@ -5,129 +5,130 @@ import (
 	"time"
 
 	"github.com/bsm/bfs"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo"
+	Ω "github.com/onsi/gomega"
 )
 
-const NumReadonlySamples = 2121
+const numReadonlySamples = 2121
 
+// Data is passed to the lint test set
 type Data struct {
 	Subject, Readonly bfs.Bucket
 }
 
+// Lint implements a test set.
 func Lint(data *Data) func() {
 	var subject, readonly bfs.Bucket
 	var ctx = context.Background()
 
 	return func() {
-		BeforeEach(func() {
+		ginkgo.BeforeEach(func() {
 			subject = data.Subject
 			readonly = data.Readonly
 		})
 
-		It("should write", func() {
+		ginkgo.It("should write", func() {
 			blank, err := subject.Create(ctx, "blank.txt", nil)
-			Expect(err).NotTo(HaveOccurred())
+			Ω.Expect(err).NotTo(Ω.HaveOccurred())
 			defer blank.Close()
 
-			Expect(subject.Glob(ctx, "*")).To(whenDrained(BeEmpty()))
-			Expect(blank.Close()).To(Succeed())
-			Expect(subject.Glob(ctx, "*")).To(whenDrained(ConsistOf("blank.txt")))
+			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
+			Ω.Expect(blank.Close()).To(Ω.Succeed())
+			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.ConsistOf("blank.txt")))
 		})
 
-		It("should glob lots of files", func() {
+		ginkgo.It("should glob lots of files", func() {
 			if readonly == nil {
-				Skip("test is disabled")
+				ginkgo.Skip("test is disabled")
 			}
-			Expect(readonly.Glob(ctx, "*/*")).To(whenDrained(HaveLen(NumReadonlySamples)))
-			Expect(readonly.Glob(ctx, "**")).To(whenDrained(HaveLen(NumReadonlySamples)))
+			Ω.Expect(readonly.Glob(ctx, "*/*")).To(whenDrained(Ω.HaveLen(numReadonlySamples)))
+			Ω.Expect(readonly.Glob(ctx, "**")).To(whenDrained(Ω.HaveLen(numReadonlySamples)))
 		})
 
-		It("should glob", func() {
-			Expect(writeTestData(subject, "path/a/first.txt")).To(Succeed())
-			Expect(writeTestData(subject, "path/b/second.txt")).To(Succeed())
-			Expect(writeTestData(subject, "path/a/third.json")).To(Succeed())
+		ginkgo.It("should glob", func() {
+			Ω.Expect(writeTestData(subject, "path/a/first.txt")).To(Ω.Succeed())
+			Ω.Expect(writeTestData(subject, "path/b/second.txt")).To(Ω.Succeed())
+			Ω.Expect(writeTestData(subject, "path/a/third.json")).To(Ω.Succeed())
 
-			Expect(subject.Glob(ctx, "")).To(whenDrained(BeEmpty()))
-			Expect(subject.Glob(ctx, "path/*")).To(whenDrained(BeEmpty()))
-			Expect(subject.Glob(ctx, "path/*/*")).To(whenDrained(HaveLen(3)))
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(3)))
-			Expect(subject.Glob(ctx, "*/a/*")).To(whenDrained(HaveLen(2)))
-			Expect(subject.Glob(ctx, "*/b/*")).To(whenDrained(HaveLen(1)))
-			Expect(subject.Glob(ctx, "path/*/*.txt")).To(whenDrained(HaveLen(2)))
-			Expect(subject.Glob(ctx, "path/*/[ft]*")).To(whenDrained(HaveLen(2)))
-			Expect(subject.Glob(ctx, "path/*/[ft]*.json")).To(whenDrained(HaveLen(1)))
-			Expect(subject.Glob(ctx, "**")).To(whenDrained(HaveLen(3)))
+			Ω.Expect(subject.Glob(ctx, "")).To(whenDrained(Ω.BeEmpty()))
+			Ω.Expect(subject.Glob(ctx, "path/*")).To(whenDrained(Ω.BeEmpty()))
+			Ω.Expect(subject.Glob(ctx, "path/*/*")).To(whenDrained(Ω.HaveLen(3)))
+			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(3)))
+			Ω.Expect(subject.Glob(ctx, "*/a/*")).To(whenDrained(Ω.HaveLen(2)))
+			Ω.Expect(subject.Glob(ctx, "*/b/*")).To(whenDrained(Ω.HaveLen(1)))
+			Ω.Expect(subject.Glob(ctx, "path/*/*.txt")).To(whenDrained(Ω.HaveLen(2)))
+			Ω.Expect(subject.Glob(ctx, "path/*/[ft]*")).To(whenDrained(Ω.HaveLen(2)))
+			Ω.Expect(subject.Glob(ctx, "path/*/[ft]*.json")).To(whenDrained(Ω.HaveLen(1)))
+			Ω.Expect(subject.Glob(ctx, "**")).To(whenDrained(Ω.HaveLen(3)))
 		})
 
-		It("should head", func() {
-			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
+		ginkgo.It("should head", func() {
+			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
 
 			_, err := subject.Head(ctx, "path/to/missing")
-			Expect(err).To(Equal(bfs.ErrNotFound))
+			Ω.Expect(err).To(Ω.Equal(bfs.ErrNotFound))
 
 			info, err := subject.Head(ctx, "path/to/first.txt")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info.Name).To(Equal("path/to/first.txt"))
-			Expect(info.Size).To(Equal(int64(8)))
-			Expect(info.ModTime).To(BeTemporally("~", time.Now(), time.Second))
+			Ω.Expect(err).NotTo(Ω.HaveOccurred())
+			Ω.Expect(info.Name).To(Ω.Equal("path/to/first.txt"))
+			Ω.Expect(info.Size).To(Ω.Equal(int64(8)))
+			Ω.Expect(info.ModTime).To(Ω.BeTemporally("~", time.Now(), 5*time.Second))
 		})
 
-		It("should read", func() {
-			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
+		ginkgo.It("should read", func() {
+			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
 
 			_, err := subject.Open(ctx, "path/to/missing")
-			Expect(err).To(Equal(bfs.ErrNotFound))
+			Ω.Expect(err).To(Ω.Equal(bfs.ErrNotFound))
 
 			obj, err := subject.Open(ctx, "path/to/first.txt")
-			Expect(err).NotTo(HaveOccurred())
+			Ω.Expect(err).NotTo(Ω.HaveOccurred())
 
 			data := make([]byte, 100)
-			Expect(obj.Read(data)).To(Equal(8))
-			Expect(string(data[:8])).To(Equal("TESTDATA"))
-			Expect(obj.Close()).To(Succeed())
+			Ω.Expect(obj.Read(data)).To(Ω.Equal(8))
+			Ω.Expect(string(data[:8])).To(Ω.Equal("TESTDATA"))
+			Ω.Expect(obj.Close()).To(Ω.Succeed())
 		})
 
-		It("should remove", func() {
-			Expect(writeTestData(subject, "path/to/first.txt")).To(Succeed())
+		ginkgo.It("should remove", func() {
+			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
 
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(1)))
-			Expect(subject.Remove(ctx, "path/to/first.txt")).To(Succeed())
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(BeEmpty()))
+			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(1)))
+			Ω.Expect(subject.Remove(ctx, "path/to/first.txt")).To(Ω.Succeed())
+			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.BeEmpty()))
 
-			Expect(subject.Remove(ctx, "missing")).To(Succeed())
+			Ω.Expect(subject.Remove(ctx, "missing")).To(Ω.Succeed())
 		})
 
-		It("should copy", func() {
+		ginkgo.It("should copy", func() {
 			copier, ok := subject.(interface {
 				Copy(context.Context, string, string) error
 			})
 			if !ok {
-				Skip("test is disabled")
+				ginkgo.Skip("test is disabled")
 			}
 
-			Expect(writeTestData(subject, "path/to/src.txt")).To(Succeed())
+			Ω.Expect(writeTestData(subject, "path/to/src.txt")).To(Ω.Succeed())
 
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(1)))
-			Expect(copier.Copy(ctx, "path/to/src.txt", "path/to/dst.txt")).To(Succeed())
-			Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(HaveLen(2)))
+			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(1)))
+			Ω.Expect(copier.Copy(ctx, "path/to/src.txt", "path/to/dst.txt")).To(Ω.Succeed())
+			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(2)))
 
 			info, err := subject.Head(ctx, "path/to/dst.txt")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(info.Name).To(Equal("path/to/dst.txt"))
-			Expect(info.Size).To(Equal(int64(8)))
-			Expect(info.ModTime).To(BeTemporally("~", time.Now(), time.Second))
+			Ω.Expect(err).NotTo(Ω.HaveOccurred())
+			Ω.Expect(info.Name).To(Ω.Equal("path/to/dst.txt"))
+			Ω.Expect(info.Size).To(Ω.Equal(int64(8)))
+			Ω.Expect(info.ModTime).To(Ω.BeTemporally("~", time.Now(), 5*time.Second))
 		})
-
 	}
 }
 
 func writeTestData(bucket bfs.Bucket, name string) error {
-	return bfs.WriteObject(bucket, context.Background(), name, []byte("TESTDATA"), nil)
+	return bfs.WriteObject(context.Background(), bucket, name, []byte("TESTDATA"), nil)
 }
 
-func whenDrained(m OmegaMatcher) OmegaMatcher {
-	return WithTransform(func(iter bfs.Iterator) []string {
+func whenDrained(m Ω.OmegaMatcher) Ω.OmegaMatcher {
+	return Ω.WithTransform(func(iter bfs.Iterator) []string {
 		defer iter.Close()
 
 		var entries []string

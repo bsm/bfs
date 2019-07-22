@@ -10,15 +10,12 @@
 //
 //   func main() {
 //     ctx := context.Background()
-//
-//     u, _ := url.Parse("file:///path/to/root?tmpdir=%2Fcustom%2Ftmp")
-//     bucket, _ := bfs.Resolve(ctx, u)
-//
-//     f, _ := bucket.Open(ctx, "file/within/root.txt")
+//     b, _ := bfs.Connect(ctx, "file:///path/to/root?tmpdir=%2Fcustom%2Ftmp")
+//     f, _ := b.Open(ctx, "file/within/root.txt")
 //     ...
 //   }
 //
-// bfs.Resolve supports the following query parameters:
+// bfs.Connect supports the following query parameters:
 //
 //   tmpdir - custom temp dir
 //

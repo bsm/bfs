@@ -10,15 +10,12 @@
 //
 //   func main() {
 //     ctx := context.Background()
-//
-//     u, _ := url.Parse("s3://bucket/a&acl=MY_ACL")
-//     bucket, _ := bfs.Resolve(ctx, u)
-//
-//     f, _ := bucket.Open(ctx, "b/c.txt") // opens s3://bucket/a/b/c.txt
+//     b, _ := bfs.Connect(ctx, "s3://bucket/a&acl=MY_ACL")
+//     f, _ := b.Open(ctx, "b/c.txt") // opens s3://bucket/a/b/c.txt
 //     ...
 //   }
 //
-// bfs.Resolve supports the following query parameters:
+// bfs.Connect supports the following query parameters:
 //
 //   aws_access_key_id      - custom AWS credentials
 //   aws_secret_access_key  - custom AWS credentials

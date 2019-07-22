@@ -10,15 +10,12 @@
 //
 //   func main() {
 //     ctx := context.Background()
-//
-//     u, _ := url.Parse("gs://bucket/a")
-//     bucket, _ := bfs.Resolve(ctx, u)
-//
-//     f, _ := bucket.Open(ctx, "b/c.txt") // opens gs://bucket/a/b/c.txt
+//     b, _ := bfs.Connect(ctx, "gs://bucket/a")
+//     f, _ := b.Open(ctx, "b/c.txt") // opens gs://bucket/a/b/c.txt
 //     ...
 //   }
 //
-// bfs.Resolve supports the following query parameters:
+// bfs.Connect supports the following query parameters:
 //
 //   scopes      - custom scopes
 //   credentials - path to custom credentials file
