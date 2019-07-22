@@ -30,6 +30,7 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -108,7 +109,9 @@ func (c *Config) norm() error {
 	}
 
 	if c.Session == nil {
-		sess, err := session.NewSession(&c.AWS)
+		sess, err := session.NewSession(&c.AWS, &aws.Config{
+			HTTPClient: newHTTPClientWithoutCompression(),
+		})
 		if err != nil {
 			return err
 		} else {
@@ -440,4 +443,29 @@ func (i *iterator) fetchNextPage() error {
 		}
 	}
 	return nil
+}
+
+// --------------------------------------------------------------------
+
+// newHTTPClientWithoutCompression returns an HTTP client with implicit GZIP compression disabled.
+func newHTTPClientWithoutCompression() *http.Client {
+	// TODO(mxmCherry): replace this with `http.DefaultTransport.(*http.Transport).Clone()` when Go 1.13 is out: https://github.com/golang/go/issues/26013 , https://go-review.googlesource.com/c/go/+/174597/
+	t := &http.Transport{
+		// NOTE(mxmCherry): code copied because copying http.DefaultTransport variable itself copies its mutex as well (go vet)
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+	t.DisableCompression = true
+
+	return &http.Client{
+		Transport: t,
+	}
 }
