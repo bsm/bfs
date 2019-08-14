@@ -4,6 +4,11 @@ go:
   - 1.12.x
 env:
   - GO111MODULE=on GOPROXY=https://proxy.golang.org
+services:
+  - docker
+before_install:
+  - mkdir -p /tmp/ftp
+  - docker run -d -v /tmp/ftp:/home/vsftpd -p 7020:20 -p 7021:21 -p 47400-47470:47400-47470 -e FTP_USER=ftpuser -e FTP_PASS=ftppass -e PASV_ADDRESS=127.0.0.1 --restart=always bogem/ftp
 cache:
   directories:
     - $GOPATH/pkg/mod

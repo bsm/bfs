@@ -43,6 +43,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -271,7 +272,9 @@ type writer struct {
 	closeOnce sync.Once
 }
 
-func (w *writer) Close() (err error) {
+func (w *writer) Close() error {
+	var err error
+
 	w.closeOnce.Do(func() {
 		// Delete tempfile in the end
 		fname := w.Name()
@@ -299,12 +302,17 @@ func (w *writer) Close() (err error) {
 			Metadata:    aws.StringMap(w.opts.GetMetadata()),
 		})
 	})
-	return
+
+	return normError(err)
 }
 
 // -----------------------------------------------------------------------------
 
 func normError(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	switch e := err.(type) {
 	case awserr.RequestFailure:
 		switch e.StatusCode() {
@@ -315,6 +323,8 @@ func normError(err error) error {
 		switch e.Code() {
 		case s3.ErrCodeNoSuchKey:
 			return bfs.ErrNotFound
+		case request.CanceledErrorCode:
+			return context.Canceled
 		}
 	}
 	return err
