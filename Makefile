@@ -10,9 +10,7 @@ bench/%: %
 	@cd $< && go test ./... -run=NONE -bench=. -benchmem
 
 bump-deps/%: %
-	@cd $< \
-		&& go get -u ./... \
-		&& go mod tidy
+	@cd $< && go get -u ./... && go mod tidy
 
 vet: vet/. $(patsubst %/go.mod,vet/%,$(wildcard */go.mod))
 test: test/. $(patsubst %/go.mod,test/%,$(wildcard */go.mod))

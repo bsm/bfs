@@ -37,6 +37,20 @@ func Lint(data *Data) func() {
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.ConsistOf("blank.txt")))
 		})
 
+		ginkgo.It("should abort write if context is cancelled", func() {
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			blank, err := subject.Create(ctx, "blank.txt", nil)
+			Ω.Expect(err).NotTo(Ω.HaveOccurred())
+			defer blank.Close()
+
+			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
+			cancel()
+			Ω.Expect(blank.Close()).To(Ω.Equal(context.Canceled))
+			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
+		})
+
 		ginkgo.It("should glob lots of files", func() {
 			if readonly == nil {
 				ginkgo.Skip("test is disabled")
@@ -72,7 +86,7 @@ func Lint(data *Data) func() {
 			Ω.Expect(err).NotTo(Ω.HaveOccurred())
 			Ω.Expect(info.Name).To(Ω.Equal("path/to/first.txt"))
 			Ω.Expect(info.Size).To(Ω.Equal(int64(8)))
-			Ω.Expect(info.ModTime).To(Ω.BeTemporally("~", time.Now(), 5*time.Second))
+			Ω.Expect(info.ModTime).To(Ω.BeTemporally("~", time.Now(), time.Minute))
 		})
 
 		ginkgo.It("should read", func() {
