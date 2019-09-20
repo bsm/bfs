@@ -1,14 +1,14 @@
 language: go
 go:
-  - 1.11.x
   - 1.12.x
-env:
-  - GO111MODULE=on GOPROXY=https://proxy.golang.org
+  - 1.13.x
+-env:
+  - GO111MODULE="on" GOPROXY=https://proxy.golang.org
 services:
   - docker
 before_install:
-  - mkdir -p /tmp/ftp
-  - docker run -d -v /tmp/ftp:/home/vsftpd -p 7020:20 -p 7021:21 -p 47400-47470:47400-47470 -e FTP_USER=ftpuser -e FTP_PASS=ftppass -e PASV_ADDRESS=127.0.0.1 --restart=always bogem/ftp
+  - docker run -d -p 7021:21 -p 21000-21010:21000-21010 -e USERS="ftpuser|ftppass" delfer/alpine-ftp-server
+  - docker run -d -p 7022:22 sickp/alpine-sshd:7.5-r2
 cache:
   directories:
     - $GOPATH/pkg/mod

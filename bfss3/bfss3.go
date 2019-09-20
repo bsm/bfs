@@ -23,6 +23,7 @@
 //   region                 - specify an AWS region
 //   max_retries            - specify maximum number of retries
 //   acl                    - custom ACL, defaults to DefaultACL
+//   sse                    - server-side-encryption algorithm
 //
 package bfss3
 
@@ -85,6 +86,7 @@ func init() {
 		return New(u.Host, &Config{
 			Prefix: prefix,
 			ACL:    query.Get("acl"),
+			SSE:    query.Get("sse"),
 			AWS:    awscfg,
 		})
 	})
@@ -97,6 +99,8 @@ type Config struct {
 	AWS aws.Config
 	// Custom ACL, defaults to DefaultACL.
 	ACL string
+	// The Server-side encryption algorithm used when storing this object in S3.
+	SSE string
 	// An optional path prefix
 	Prefix string
 	// An optional custom session.
@@ -248,10 +252,11 @@ func (b *s3Bucket) Remove(ctx context.Context, name string) error {
 func (b *s3Bucket) Copy(ctx context.Context, src, dst string) error {
 	source := path.Join("/", b.bucket, b.withPrefix(src))
 	_, err := b.CopyObjectWithContext(ctx, &s3.CopyObjectInput{
-		ACL:        aws.String(b.config.ACL),
-		Bucket:     aws.String(b.bucket),
-		CopySource: aws.String(source),
-		Key:        aws.String(b.withPrefix(dst)),
+		Bucket:               aws.String(b.bucket),
+		CopySource:           aws.String(source),
+		Key:                  aws.String(b.withPrefix(dst)),
+		ACL:                  aws.String(b.config.ACL),
+		ServerSideEncryption: strPresence(b.config.SSE),
 	})
 	return err
 }
@@ -294,12 +299,13 @@ func (w *writer) Close() error {
 		defer file.Close()
 
 		_, err = w.bucket.uploader.UploadWithContext(w.ctx, &s3manager.UploadInput{
-			ACL:         aws.String(w.bucket.config.ACL),
-			Bucket:      aws.String(w.bucket.bucket),
-			Key:         aws.String(w.bucket.withPrefix(w.name)),
-			Body:        file,
-			ContentType: aws.String(w.opts.GetContentType()),
-			Metadata:    aws.StringMap(w.opts.GetMetadata()),
+			Bucket:               aws.String(w.bucket.bucket),
+			Key:                  aws.String(w.bucket.withPrefix(w.name)),
+			Body:                 file,
+			ContentType:          aws.String(w.opts.GetContentType()),
+			Metadata:             aws.StringMap(w.opts.GetMetadata()),
+			ACL:                  aws.String(w.bucket.config.ACL),
+			ServerSideEncryption: strPresence(w.bucket.config.SSE),
 		})
 	})
 
@@ -328,6 +334,13 @@ func normError(err error) error {
 		}
 	}
 	return err
+}
+
+func strPresence(s string) *string {
+	if s != "" {
+		return aws.String(s)
+	}
+	return nil
 }
 
 type response struct {
