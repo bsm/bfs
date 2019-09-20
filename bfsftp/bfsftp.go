@@ -152,20 +152,23 @@ func (b *ftpBucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, err
 
 // Head implements bfs.Bucket.
 func (b *ftpBucket) Head(_ context.Context, name string) (*bfs.MetaInfo, error) {
-	entries, err := b.conn.List(b.withPrefix(name))
+	dir, base := path.Split(name)
+	entries, err := b.conn.List(b.withPrefix(dir))
 	if err != nil {
 		return nil, normError(err)
 	}
 
-	if len(entries) != 1 || entries[0].Type != ftp.EntryTypeFile {
-		return nil, bfs.ErrNotFound
+	for _, ent := range entries {
+		if ent.Type == ftp.EntryTypeFile && ent.Name == base {
+			return &bfs.MetaInfo{
+				Name:    name,
+				Size:    int64(entries[0].Size),
+				ModTime: entries[0].Time,
+			}, nil
+		}
 	}
 
-	return &bfs.MetaInfo{
-		Name:    name,
-		Size:    int64(entries[0].Size),
-		ModTime: entries[0].Time,
-	}, nil
+	return nil, bfs.ErrNotFound
 }
 
 // Open implements bfs.Bucket.
