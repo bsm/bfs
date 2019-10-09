@@ -2,13 +2,15 @@ language: go
 go:
   - 1.12.x
   - 1.13.x
--env:
+env:
   - GO111MODULE="on" GOPROXY=https://proxy.golang.org
 services:
   - docker
 before_install:
   - docker run -d -p 7021:21 -p 21000-21010:21000-21010 -e USERS="ftpuser|ftppass" delfer/alpine-ftp-server
   - docker run -d -p 7022:22 sickp/alpine-sshd:7.5-r2
+script:
+  - make
 cache:
   directories:
     - $GOPATH/pkg/mod
