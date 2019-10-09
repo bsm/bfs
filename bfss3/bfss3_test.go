@@ -20,7 +20,7 @@ const bucketName = "bsm-bfs-unittest"
 var awsConfig = aws.Config{Region: aws.String("us-east-1")}
 
 var _ = Describe("Bucket", func() {
-	var data = lint.Data{}
+	var opts lint.Options
 
 	BeforeEach(func() {
 		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -30,11 +30,16 @@ var _ = Describe("Bucket", func() {
 		readonly, err := bfss3.New(bucketName, &bfss3.Config{Prefix: "m/", AWS: awsConfig})
 		Expect(err).NotTo(HaveOccurred())
 
-		data.Subject = subject
-		data.Readonly = readonly
+		opts = lint.Options{
+			Subject:  subject,
+			Readonly: readonly,
+
+			Metadata:    true,
+			ContentType: true,
+		}
 	})
 
-	Context("defaults", lint.Lint(&data))
+	Context("defaults", lint.Lint(&opts))
 })
 
 // ------------------------------------------------------------------------

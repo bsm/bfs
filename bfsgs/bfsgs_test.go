@@ -17,7 +17,7 @@ import (
 const bucketName = "bsm-bfs-unittest"
 
 var _ = Describe("Bucket", func() {
-	var data = lint.Data{}
+	var opts lint.Options
 
 	BeforeEach(func() {
 		ctx := context.Background()
@@ -29,11 +29,16 @@ var _ = Describe("Bucket", func() {
 		readonly, err := bfsgs.New(ctx, bucketName, &bfsgs.Config{Prefix: "m/"})
 		Expect(err).NotTo(HaveOccurred())
 
-		data.Subject = subject
-		data.Readonly = readonly
+		opts = lint.Options{
+			Subject:  subject,
+			Readonly: readonly,
+
+			Metadata:    true,
+			ContentType: true,
+		}
 	})
 
-	Context("defaults", lint.Lint(&data))
+	Context("defaults", lint.Lint(&opts))
 })
 
 // ------------------------------------------------------------------------

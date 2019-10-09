@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/textproto"
 	"net/url"
 	"sync"
 	"time"
@@ -39,10 +40,37 @@ type Bucket interface {
 	Close() error
 }
 
+// Metadata contains metadata values.
+type Metadata map[string]string
+
+// Get gets the value associated with the given key.
+// It is case insensitive; textproto.CanonicalMIMEHeaderKey is used
+// to canonicalize the provided key.
+// If there are no values associated with the key, Get returns "".
+func (m Metadata) Get(key string) string {
+	return m[textproto.CanonicalMIMEHeaderKey(key)]
+}
+
+// Set sets the header entries associated with key to
+// the single element value. It replaces any existing
+// values associated with key.
+func (m Metadata) Set(key, value string) {
+	m[textproto.CanonicalMIMEHeaderKey(key)] = value
+}
+
+// Del deletes the values associated with key.
+// The key is case insensitive; it is canonicalized by
+// textproto.CanonicalMIMEHeaderKey.
+func (m Metadata) Del(key string) {
+	delete(m, textproto.CanonicalMIMEHeaderKey(key))
+}
+
+// --------------------------------------------------------------------
+
 // WriteOptions provide optional configuration when creating/writing objects.
 type WriteOptions struct {
 	ContentType string
-	Metadata    map[string]string
+	Metadata    Metadata
 }
 
 // GetContentType returns a content type.
@@ -54,20 +82,26 @@ func (o *WriteOptions) GetContentType() string {
 }
 
 // GetMetadata returns a content type.
-func (o *WriteOptions) GetMetadata() map[string]string {
+func (o *WriteOptions) GetMetadata() Metadata {
 	if o != nil {
-		return o.Metadata
+		meta := make(Metadata, len(o.Metadata))
+		for k, v := range o.Metadata {
+			meta.Set(k, v)
+		}
+		return meta
 	}
 	return nil
 }
 
+// --------------------------------------------------------------------
+
 // MetaInfo contains meta information about an object.
 type MetaInfo struct {
-	Name        string            // base name of the object
-	Size        int64             // length of the content in bytes
-	ModTime     time.Time         // modification time
-	ContentType string            // content type
-	Metadata    map[string]string // metadata
+	Name        string    // base name of the object
+	Size        int64     // length of the content in bytes
+	ModTime     time.Time // modification time
+	ContentType string    // content type
+	Metadata    Metadata  // metadata
 }
 
 // Iterator iterates over objects
