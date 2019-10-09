@@ -18,17 +18,19 @@ const (
 )
 
 var _ = Describe("Bucket", func() {
-	var data = lint.Data{}
+	var opts lint.Options
 
 	BeforeEach(func() {
 		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
 		subject, err := bfsftp.New(serverAddr, &bfsftp.Config{Prefix: prefix, Username: "ftpuser", Password: "ftppass"})
 		Expect(err).NotTo(HaveOccurred())
 
-		data.Subject = subject
+		opts = lint.Options{
+			Subject: subject,
+		}
 	})
 
-	Context("defaults", lint.Lint(&data))
+	Context("defaults", lint.Lint(&opts))
 })
 
 // ------------------------------------------------------------------------

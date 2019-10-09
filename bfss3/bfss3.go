@@ -119,9 +119,8 @@ func (c *Config) norm() error {
 		})
 		if err != nil {
 			return err
-		} else {
-			c.Session = sess
 		}
+		c.Session = sess
 	}
 
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")

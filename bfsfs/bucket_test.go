@@ -12,10 +12,8 @@ import (
 )
 
 var _ = Describe("Bucket", func() {
-	var (
-		dir  string
-		data lint.Data
-	)
+	var dir string
+	var opts lint.Options
 
 	BeforeEach(func() {
 		var err error
@@ -26,7 +24,9 @@ var _ = Describe("Bucket", func() {
 		subject, err := bfsfs.New(dir, "")
 		Expect(err).NotTo(HaveOccurred())
 
-		data.Subject = subject
+		opts = lint.Options{
+			Subject: subject,
+		}
 	})
 
 	AfterEach(func() {
@@ -35,5 +35,5 @@ var _ = Describe("Bucket", func() {
 		}
 	})
 
-	Context("defaults", lint.Lint(&data))
+	Context("defaults", lint.Lint(&opts))
 })

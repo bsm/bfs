@@ -9,12 +9,15 @@ import (
 var _ = Describe("InMem", func() {
 	var subject *bfs.InMem
 	var _ bfs.Bucket = subject
-	var data = lint.Data{}
+	var opts lint.Options
 
 	BeforeEach(func() {
 		subject = bfs.NewInMem()
-		data.Subject = subject
+		opts = lint.Options{
+			Subject:  subject,
+			Metadata: true,
+		}
 	})
 
-	Context("defaults", lint.Lint(&data))
+	Context("defaults", lint.Lint(&opts))
 })

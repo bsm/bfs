@@ -11,20 +11,23 @@ import (
 
 const numReadonlySamples = 2121
 
-// Data is passed to the lint test set
-type Data struct {
+// Options are passed to the lint test set
+type Options struct {
 	Subject, Readonly bfs.Bucket
+
+	Metadata    bool
+	ContentType bool
 }
 
 // Lint implements a test set.
-func Lint(data *Data) func() {
+func Lint(opts *Options) func() {
 	var subject, readonly bfs.Bucket
 	var ctx = context.Background()
 
 	return func() {
 		ginkgo.BeforeEach(func() {
-			subject = data.Subject
-			readonly = data.Readonly
+			subject = opts.Subject
+			readonly = opts.Readonly
 		})
 
 		ginkgo.It("should write", func() {
@@ -87,6 +90,15 @@ func Lint(data *Data) func() {
 			Ω.Expect(info.Name).To(Ω.Equal("path/to/first.txt"))
 			Ω.Expect(info.Size).To(Ω.Equal(int64(8)))
 			Ω.Expect(info.ModTime).To(Ω.BeTemporally("~", time.Now(), time.Minute))
+
+			if opts.Metadata {
+				Ω.Expect(info.Metadata).To(Ω.Equal(bfs.Metadata{
+					"X-Custom-Field": "VaLu3",
+				}))
+			}
+			if opts.ContentType {
+				Ω.Expect(info.ContentType).To(Ω.Equal("text/plain"))
+			}
 		})
 
 		ginkgo.It("should read", func() {
@@ -138,7 +150,10 @@ func Lint(data *Data) func() {
 }
 
 func writeTestData(bucket bfs.Bucket, name string) error {
-	return bfs.WriteObject(context.Background(), bucket, name, []byte("TESTDATA"), nil)
+	return bfs.WriteObject(context.Background(), bucket, name, []byte("TESTDATA"), &bfs.WriteOptions{
+		Metadata:    bfs.Metadata{"x-Custom-field": "VaLu3"},
+		ContentType: "text/plain",
+	})
 }
 
 func whenDrained(m Ω.OmegaMatcher) Ω.OmegaMatcher {
