@@ -84,10 +84,11 @@ func init() {
 		}
 
 		return New(u.Host, &Config{
-			Prefix: prefix,
-			ACL:    query.Get("acl"),
-			SSE:    query.Get("sse"),
-			AWS:    awscfg,
+			Prefix:           prefix,
+			ACL:              query.Get("acl"),
+			SSE:              query.Get("sse"),
+			GrantFullControl: query.Get("grant-full-control"),
+			AWS:              awscfg,
 		})
 	})
 }
@@ -99,6 +100,8 @@ type Config struct {
 	AWS aws.Config
 	// Custom ACL, defaults to DefaultACL.
 	ACL string
+	// GrantFullControl setting.
+	GrantFullControl string
 	// The Server-side encryption algorithm used when storing this object in S3.
 	SSE string
 	// An optional path prefix
@@ -119,8 +122,9 @@ func (c *Config) norm() error {
 		})
 		if err != nil {
 			return err
+		} else {
+			c.Session = sess
 		}
-		c.Session = sess
 	}
 
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
@@ -254,7 +258,8 @@ func (b *s3Bucket) Copy(ctx context.Context, src, dst string) error {
 		Bucket:               aws.String(b.bucket),
 		CopySource:           aws.String(source),
 		Key:                  aws.String(b.withPrefix(dst)),
-		ACL:                  aws.String(b.config.ACL),
+		ACL:                  strPresence(b.config.ACL),
+		GrantFullControl:     strPresence(b.config.GrantFullControl),
 		ServerSideEncryption: strPresence(b.config.SSE),
 	})
 	return err
@@ -303,7 +308,8 @@ func (w *writer) Close() error {
 			Body:                 file,
 			ContentType:          aws.String(w.opts.GetContentType()),
 			Metadata:             aws.StringMap(w.opts.GetMetadata()),
-			ACL:                  aws.String(w.bucket.config.ACL),
+			ACL:                  strPresence(w.bucket.config.ACL),
+			GrantFullControl:     strPresence(w.bucket.config.GrantFullControl),
 			ServerSideEncryption: strPresence(w.bucket.config.SSE),
 		})
 	})
