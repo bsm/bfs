@@ -3,7 +3,7 @@ module github.com/bsm/bfs/bfsgs
 go 1.12
 
 require (
-	cloud.google.com/go v0.48.0 // indirect
+	cloud.google.com/go v0.49.0 // indirect
 	cloud.google.com/go/storage v1.4.0
 	github.com/bmatcuk/doublestar v1.1.5
 	github.com/bsm/bfs v0.8.0
@@ -14,8 +14,8 @@ require (
 	github.com/onsi/gomega v1.5.0
 	go.opencensus.io v0.22.2 // indirect
 	golang.org/x/net v0.0.0-20191119073136-fc4aabc6c914 // indirect
-	golang.org/x/sys v0.0.0-20191119060738-e882bf8e40c2 // indirect
-	golang.org/x/tools v0.0.0-20191118222007-07fc4c7f2b98 // indirect
+	golang.org/x/sys v0.0.0-20191119195528-f068ffe820e4 // indirect
+	golang.org/x/tools v0.0.0-20191120001058-ad01d5993d97 // indirect
 	google.golang.org/api v0.14.0
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20191115221424-83cc0476cb11 // indirect

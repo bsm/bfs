@@ -3,7 +3,7 @@ module github.com/bsm/bfs/bfss3
 go 1.12
 
 require (
-	github.com/aws/aws-sdk-go v1.25.37
+	github.com/aws/aws-sdk-go v1.25.38
 	github.com/bmatcuk/doublestar v1.1.5
 	github.com/bsm/bfs v0.8.0
 	github.com/onsi/ginkgo v1.8.0
