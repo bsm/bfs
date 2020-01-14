@@ -28,16 +28,33 @@ type Bucket interface {
 	Head(ctx context.Context, name string) (*MetaInfo, error)
 
 	// Open opens an object for reading.
-	Open(ctx context.Context, name string) (io.ReadCloser, error)
+	Open(ctx context.Context, name string) (Reader, error)
 
 	// Create creates/opens a object for writing.
-	Create(ctx context.Context, name string, opts *WriteOptions) (io.WriteCloser, error)
+	Create(ctx context.Context, name string, opts *WriteOptions) (Writer, error)
 
 	// Remove removes a object.
 	Remove(ctx context.Context, name string) error
 
 	// Close closes the bucket.
 	Close() error
+}
+
+// Reader is the interface that is returned by bucket.Open.
+type Reader interface {
+	io.ReadCloser
+}
+
+// Writer is the interface that is returned by bucket.Create.
+type Writer interface {
+	io.Writer
+
+	// Discard closes and releases the writer without writing a file.
+	Discard() error
+
+	// Commit closes and commits the content by writing a file. Calls to Commit
+	// will fail when Discard was called before.
+	Commit() error
 }
 
 // Metadata contains metadata values.

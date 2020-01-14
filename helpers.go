@@ -11,12 +11,12 @@ func WriteObject(ctx context.Context, bucket Bucket, name string, data []byte, o
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	defer w.Discard()
 
 	if _, err := w.Write(data); err != nil {
 		return err
 	}
-	return w.Close()
+	return w.Commit()
 }
 
 // CopyObject is a quick helper to copy objects within the same bucket.
@@ -35,10 +35,10 @@ func CopyObject(ctx context.Context, bucket Bucket, src, dst string, dstOpts *Wr
 	if err != nil {
 		return err
 	}
-	defer w.Close()
+	defer w.Discard()
 
 	if _, err := io.Copy(w, r); err != nil {
 		return err
 	}
-	return w.Close()
+	return w.Commit()
 }

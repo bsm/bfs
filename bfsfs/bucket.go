@@ -2,7 +2,6 @@ package bfsfs
 
 import (
 	"context"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,7 +75,7 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 }
 
 // Open implements bfs.Bucket
-func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
+func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 	f, err := os.Open(b.fullPath(name))
 	if err != nil {
 		return nil, normError(err)
@@ -85,7 +84,7 @@ func (b *bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
 }
 
 // Create implements bfs.Bucket
-func (b *bucket) Create(ctx context.Context, name string, _ *bfs.WriteOptions) (io.WriteCloser, error) {
+func (b *bucket) Create(ctx context.Context, name string, _ *bfs.WriteOptions) (bfs.Writer, error) {
 	f, err := openAtomicFile(ctx, b.fullPath(name), b.tmpDir)
 	if err != nil {
 		return nil, normError(err)

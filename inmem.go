@@ -3,7 +3,6 @@ package bfs
 import (
 	"bytes"
 	"context"
-	"io"
 	"sync"
 	"time"
 
@@ -53,7 +52,7 @@ func (b *InMem) Head(_ context.Context, name string) (*MetaInfo, error) {
 }
 
 // Open implements Bucket.
-func (b *InMem) Open(_ context.Context, name string) (io.ReadCloser, error) {
+func (b *InMem) Open(_ context.Context, name string) (Reader, error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 
@@ -67,9 +66,11 @@ func (b *InMem) Open(_ context.Context, name string) (io.ReadCloser, error) {
 }
 
 // Create implements Bucket.
-func (b *InMem) Create(ctx context.Context, name string, opts *WriteOptions) (io.WriteCloser, error) {
+func (b *InMem) Create(ctx context.Context, name string, opts *WriteOptions) (Writer, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	return &inMemWriter{
 		ctx:    ctx,
+		cancel: cancel,
 		bucket: b,
 		name:   name,
 		opts:   opts,
@@ -135,12 +136,19 @@ type inMemWriter struct {
 	bytes.Buffer
 
 	ctx    context.Context
+	cancel context.CancelFunc
 	bucket *InMem
 	name   string
 	opts   *WriteOptions
 }
 
-func (w *inMemWriter) Close() error {
+func (w *inMemWriter) Discard() error {
+	err := w.ctx.Err()
+	w.cancel()
+	return err
+}
+
+func (w *inMemWriter) Commit() error {
 	select {
 	case <-w.ctx.Done():
 		return w.ctx.Err()
@@ -148,7 +156,7 @@ func (w *inMemWriter) Close() error {
 	}
 
 	w.bucket.store(w.name, w.Bytes(), w.opts)
-	return nil
+	return w.Discard()
 }
 
 type inMemIterator struct {
