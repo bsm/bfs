@@ -10,8 +10,9 @@ import (
 
 // Object is a handle for a single file/object on a Bucket.
 type Object struct {
-	name   string
-	bucket Bucket
+	name      string
+	bucket    Bucket
+	reclaimed bool
 }
 
 // NewObject inits a new object from an URL string
@@ -39,6 +40,15 @@ func NewObject(ctx context.Context, fullURL string) (*Object, error) {
 		name:   name,
 		bucket: bucket,
 	}, nil
+}
+
+// NewObjectFromBucket inits a new object from an existing bucket.
+func NewObjectFromBucket(bucket Bucket, name string) *Object {
+	return &Object{
+		name:      name,
+		bucket:    bucket,
+		reclaimed: true,
+	}
 }
 
 // NewInMemObject returns a new in-memory object.
@@ -76,5 +86,8 @@ func (o *Object) Remove(ctx context.Context) error {
 
 // Close closes the object.
 func (o *Object) Close() error {
+	if o.reclaimed {
+		return nil
+	}
 	return o.bucket.Close()
 }
