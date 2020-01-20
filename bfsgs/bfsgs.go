@@ -24,7 +24,7 @@ package bfsgs
 
 import (
 	"context"
-	"io"
+	"errors"
 	"net/textproto"
 	"net/url"
 	"strings"
@@ -78,13 +78,13 @@ func (c *Config) norm() error {
 	return nil
 }
 
-type gsBucket struct {
+type bucket struct {
 	bucket *storage.BucketHandle
 	config *Config
 }
 
 // New initiates an bfs.Bucket backed by Google Cloud Storage.
-func New(ctx context.Context, bucket string, cfg *Config) (bfs.Bucket, error) {
+func New(ctx context.Context, name string, cfg *Config) (bfs.Bucket, error) {
 	config := new(Config)
 	if cfg != nil {
 		*config = *cfg
@@ -98,13 +98,13 @@ func New(ctx context.Context, bucket string, cfg *Config) (bfs.Bucket, error) {
 		return nil, err
 	}
 
-	return &gsBucket{
-		bucket: client.Bucket(bucket),
+	return &bucket{
+		bucket: client.Bucket(name),
 		config: config,
 	}, nil
 }
 
-func (b *gsBucket) stripPrefix(name string) string {
+func (b *bucket) stripPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
@@ -113,7 +113,7 @@ func (b *gsBucket) stripPrefix(name string) string {
 	return name
 }
 
-func (b *gsBucket) withPrefix(name string) string {
+func (b *bucket) withPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
@@ -121,7 +121,7 @@ func (b *gsBucket) withPrefix(name string) string {
 }
 
 // Glob implements bfs.Bucket.
-func (b *gsBucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
+func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	// quick sanity check
 	if _, err := doublestar.Match(pattern, ""); err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (b *gsBucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, erro
 }
 
 // Head implements bfs.Bucket.
-func (b *gsBucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
+func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 	obj := b.bucket.Object(b.withPrefix(name))
 	attrs, err := obj.Attrs(ctx)
 	if err != nil {
@@ -163,24 +163,26 @@ func (b *gsBucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 }
 
 // Open implements bfs.Bucket.
-func (b *gsBucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
+func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 	obj := b.bucket.Object(b.withPrefix(name))
 	ord, err := obj.NewReader(ctx)
 	return ord, normError(err)
 }
 
 // Create implements bfs.Bucket.
-func (b *gsBucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (io.WriteCloser, error) {
+func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
+	ctx, cancel := context.WithCancel(ctx)
+
 	obj := b.bucket.Object(b.withPrefix(name))
 	wrt := obj.NewWriter(ctx)
 	wrt.PredefinedACL = b.config.PredefinedACL
 	wrt.ContentType = opts.GetContentType()
 	wrt.Metadata = opts.GetMetadata()
-	return wrt, nil
+	return &writer{Writer: wrt, ctx: ctx, cancel: cancel}, nil
 }
 
 // Remove implements bfs.Bucket.
-func (b *gsBucket) Remove(ctx context.Context, name string) error {
+func (b *bucket) Remove(ctx context.Context, name string) error {
 	obj := b.bucket.Object(b.withPrefix(name))
 	err := obj.Delete(ctx)
 	if err == storage.ErrObjectNotExist {
@@ -190,7 +192,7 @@ func (b *gsBucket) Remove(ctx context.Context, name string) error {
 }
 
 // Copy supports copying of objects within the bucket.
-func (b *gsBucket) Copy(ctx context.Context, src, dst string) error {
+func (b *bucket) Copy(ctx context.Context, src, dst string) error {
 	_, err := b.bucket.Object(b.withPrefix(dst)).CopierFrom(
 		b.bucket.Object(b.withPrefix(src)),
 	).Run(ctx)
@@ -198,7 +200,7 @@ func (b *gsBucket) Copy(ctx context.Context, src, dst string) error {
 }
 
 // Close implements bfs.Bucket.
-func (*gsBucket) Close() error { return nil }
+func (*bucket) Close() error { return nil }
 
 // --------------------------------------------------------------------
 
@@ -211,8 +213,38 @@ func normError(err error) error {
 
 // --------------------------------------------------------------------
 
+type writer struct {
+	*storage.Writer
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func (w *writer) Discard() error {
+	err := w.ctx.Err()
+
+	w.cancel() // cancel BEFORE close
+	if ezz := w.Close(); ezz != nil && !errors.Is(ezz, context.Canceled) {
+		err = ezz
+	}
+
+	return err
+}
+
+func (w *writer) Commit() error {
+	err := w.ctx.Err()
+
+	if ezz := w.Close(); ezz != nil {
+		err = ezz
+	}
+	w.cancel() // cancel AFTER close
+
+	return err
+}
+
+// --------------------------------------------------------------------
+
 type iterator struct {
-	parent  *gsBucket
+	parent  *bucket
 	iter    *storage.ObjectIterator
 	pattern string
 	current object

@@ -17,12 +17,12 @@ func ExampleInMem() {
 	if err != nil {
 		panic(err)
 	}
-	defer o1.Close()
+	defer o1.Discard()
 
 	if _, err := o1.Write([]byte("TESTDATA")); err != nil {
 		panic(err)
 	}
-	if err := o1.Close(); err != nil {
+	if err := o1.Commit(); err != nil {
 		panic(err)
 	}
 

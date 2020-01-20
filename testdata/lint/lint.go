@@ -33,11 +33,23 @@ func Lint(opts *Options) func() {
 		ginkgo.It("should write", func() {
 			blank, err := subject.Create(ctx, "blank.txt", nil)
 			Ω.Expect(err).NotTo(Ω.HaveOccurred())
-			defer blank.Close()
+			defer blank.Discard()
 
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
-			Ω.Expect(blank.Close()).To(Ω.Succeed())
+			Ω.Expect(blank.Commit()).To(Ω.Succeed())
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.ConsistOf("blank.txt")))
+			Ω.Expect(blank.Discard()).NotTo(Ω.Succeed())
+		})
+
+		ginkgo.It("should abort write if discarded", func() {
+			blank, err := subject.Create(ctx, "blank.txt", nil)
+			Ω.Expect(err).NotTo(Ω.HaveOccurred())
+			defer blank.Discard()
+
+			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
+			Ω.Expect(blank.Discard()).To(Ω.Succeed())
+			Ω.Expect(blank.Commit()).NotTo(Ω.Succeed())
+			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
 		})
 
 		ginkgo.It("should abort write if context is cancelled", func() {
@@ -46,12 +58,13 @@ func Lint(opts *Options) func() {
 
 			blank, err := subject.Create(ctx, "blank.txt", nil)
 			Ω.Expect(err).NotTo(Ω.HaveOccurred())
-			defer blank.Close()
+			defer blank.Discard()
 
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
 			cancel()
-			Ω.Expect(blank.Close()).To(Ω.Equal(context.Canceled))
+			Ω.Expect(blank.Commit()).To(Ω.Equal(context.Canceled))
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
+			Ω.Expect(blank.Discard()).NotTo(Ω.Succeed())
 		})
 
 		ginkgo.It("should glob lots of files", func() {

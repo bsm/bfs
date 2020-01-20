@@ -121,9 +121,8 @@ func (c *Config) norm() error {
 		})
 		if err != nil {
 			return err
-		} else {
-			c.Session = sess
 		}
+		c.Session = sess
 	}
 
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
@@ -134,7 +133,7 @@ func (c *Config) norm() error {
 	return nil
 }
 
-type s3Bucket struct {
+type bucket struct {
 	s3iface.S3API
 	bucket   string
 	config   *Config
@@ -142,7 +141,7 @@ type s3Bucket struct {
 }
 
 // New initiates an bfs.Bucket backed by S3.
-func New(bucket string, cfg *Config) (bfs.Bucket, error) {
+func New(name string, cfg *Config) (bfs.Bucket, error) {
 	config := new(Config)
 	if cfg != nil {
 		*config = *cfg
@@ -153,15 +152,15 @@ func New(bucket string, cfg *Config) (bfs.Bucket, error) {
 
 	client := s3.New(config.Session)
 
-	return &s3Bucket{
+	return &bucket{
 		S3API:    client,
-		bucket:   bucket,
+		bucket:   name,
 		config:   config,
 		uploader: s3manager.NewUploaderWithClient(client),
 	}, nil
 }
 
-func (b *s3Bucket) stripPrefix(name string) string {
+func (b *bucket) stripPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
@@ -170,7 +169,7 @@ func (b *s3Bucket) stripPrefix(name string) string {
 	return name
 }
 
-func (b *s3Bucket) withPrefix(name string) string {
+func (b *bucket) withPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
@@ -178,7 +177,7 @@ func (b *s3Bucket) withPrefix(name string) string {
 }
 
 // Glob implements bfs.Bucket.
-func (b *s3Bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
+func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	// quick sanity check
 	if _, err := doublestar.Match(pattern, ""); err != nil {
 		return nil, err
@@ -192,7 +191,7 @@ func (b *s3Bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, erro
 }
 
 // Head implements bfs.Bucket.
-func (b *s3Bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
+func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 	resp, err := b.HeadObjectWithContext(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(b.withPrefix(name)),
@@ -211,7 +210,7 @@ func (b *s3Bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error)
 }
 
 // Open implements bfs.Bucket.
-func (b *s3Bucket) Open(ctx context.Context, name string) (io.ReadCloser, error) {
+func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 	resp, err := b.GetObjectWithContext(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(b.withPrefix(name)),
@@ -226,7 +225,7 @@ func (b *s3Bucket) Open(ctx context.Context, name string) (io.ReadCloser, error)
 }
 
 // Create implements bfs.Bucket.
-func (b *s3Bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (io.WriteCloser, error) {
+func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
 	f, err := ioutil.TempFile("", "bfs-s3")
 	if err != nil {
 		return nil, err
@@ -242,7 +241,7 @@ func (b *s3Bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptio
 }
 
 // Remove implements bfs.Bucket.
-func (b *s3Bucket) Remove(ctx context.Context, name string) error {
+func (b *bucket) Remove(ctx context.Context, name string) error {
 	_, err := b.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(b.withPrefix(name)),
@@ -251,7 +250,7 @@ func (b *s3Bucket) Remove(ctx context.Context, name string) error {
 }
 
 // Copy supports copying of objects within the bucket.
-func (b *s3Bucket) Copy(ctx context.Context, src, dst string) error {
+func (b *bucket) Copy(ctx context.Context, src, dst string) error {
 	source := path.Join("/", b.bucket, b.withPrefix(src))
 	_, err := b.CopyObjectWithContext(ctx, &s3.CopyObjectInput{
 		Bucket:               aws.String(b.bucket),
@@ -265,7 +264,7 @@ func (b *s3Bucket) Copy(ctx context.Context, src, dst string) error {
 }
 
 // Close implements bfs.Bucket.
-func (*s3Bucket) Close() error { return nil }
+func (*bucket) Close() error { return nil }
 
 // --------------------------------------------------------
 
@@ -273,34 +272,47 @@ type writer struct {
 	*os.File
 
 	ctx    context.Context
-	bucket *s3Bucket
+	bucket *bucket
 	name   string
 	opts   *bfs.WriteOptions
 
 	closeOnce sync.Once
 }
 
-func (w *writer) Close() error {
-	var err error
-
+func (w *writer) Discard() error {
+	err := context.Canceled
 	w.closeOnce.Do(func() {
 		// Delete tempfile in the end
 		fname := w.Name()
 		defer os.Remove(fname)
 
-		// Re-open tempfile for reading
-		if err2 := w.File.Close(); err2 != nil {
-			err = err2
+		// Close tempfile
+		err = w.File.Close()
+	})
+
+	return err
+}
+
+func (w *writer) Commit() error {
+	err := context.Canceled
+	w.closeOnce.Do(func() {
+		// Delete tempfile in the end
+		fname := w.Name()
+		defer os.Remove(fname)
+
+		// Close tempfile
+		if err = w.File.Close(); err != nil {
 			return
 		}
 
-		file, err2 := os.Open(fname)
-		if err2 != nil {
-			err = err2
+		// Re-open tempfile for reading
+		var file *os.File
+		if file, err = os.Open(fname); err != nil {
 			return
 		}
 		defer file.Close()
 
+		// Upload file
 		_, err = w.bucket.uploader.UploadWithContext(w.ctx, &s3manager.UploadInput{
 			Bucket:               aws.String(w.bucket.bucket),
 			Key:                  aws.String(w.bucket.withPrefix(w.name)),
@@ -371,7 +383,7 @@ func (r *response) Read(p []byte) (n int, err error) {
 // --------------------------------------------------------------------
 
 type iterator struct {
-	parent  *s3Bucket
+	parent  *bucket
 	ctx     context.Context
 	pattern string
 	token   *string

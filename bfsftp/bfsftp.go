@@ -23,7 +23,6 @@ package bfsftp
 
 import (
 	"context"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/textproto"
@@ -80,7 +79,7 @@ func (c *Config) norm() error {
 	return nil
 }
 
-type ftpBucket struct {
+type bucket struct {
 	conn   *ftp.ServerConn
 	config *Config
 }
@@ -107,13 +106,13 @@ func New(address string, cfg *Config) (bfs.Bucket, error) {
 		}
 	}
 
-	return &ftpBucket{
+	return &bucket{
 		conn:   conn,
 		config: config,
 	}, nil
 }
 
-func (b *ftpBucket) stripPrefix(name string) string {
+func (b *bucket) stripPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
@@ -122,7 +121,7 @@ func (b *ftpBucket) stripPrefix(name string) string {
 	return name
 }
 
-func (b *ftpBucket) withPrefix(name string) string {
+func (b *bucket) withPrefix(name string) string {
 	if b.config.Prefix == "" {
 		return name
 	}
@@ -130,7 +129,7 @@ func (b *ftpBucket) withPrefix(name string) string {
 }
 
 // Glob implements bfs.Bucket.
-func (b *ftpBucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
+func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	// quick sanity check
 	if _, err := doublestar.Match(pattern, ""); err != nil {
 		return nil, err
@@ -151,7 +150,7 @@ func (b *ftpBucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, err
 }
 
 // Head implements bfs.Bucket.
-func (b *ftpBucket) Head(_ context.Context, name string) (*bfs.MetaInfo, error) {
+func (b *bucket) Head(_ context.Context, name string) (*bfs.MetaInfo, error) {
 	dir, base := path.Split(name)
 	entries, err := b.conn.List(b.withPrefix(dir))
 	if err != nil {
@@ -172,7 +171,7 @@ func (b *ftpBucket) Head(_ context.Context, name string) (*bfs.MetaInfo, error) 
 }
 
 // Open implements bfs.Bucket.
-func (b *ftpBucket) Open(_ context.Context, name string) (io.ReadCloser, error) {
+func (b *bucket) Open(_ context.Context, name string) (bfs.Reader, error) {
 	rc, err := b.conn.Retr(b.withPrefix(name))
 	if err != nil {
 		return nil, normError(err)
@@ -181,7 +180,7 @@ func (b *ftpBucket) Open(_ context.Context, name string) (io.ReadCloser, error) 
 }
 
 // Create implements bfs.Bucket.
-func (b *ftpBucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (io.WriteCloser, error) {
+func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
 	f, err := ioutil.TempFile("", "bfs-ftp")
 	if err != nil {
 		return nil, err
@@ -197,7 +196,7 @@ func (b *ftpBucket) Create(ctx context.Context, name string, opts *bfs.WriteOpti
 }
 
 // Remove implements bfs.Bucket.
-func (b *ftpBucket) Remove(_ context.Context, name string) error {
+func (b *bucket) Remove(_ context.Context, name string) error {
 	err := normError(b.conn.Delete(b.withPrefix(name)))
 	if err != nil && err != bfs.ErrNotFound {
 		return err
@@ -206,11 +205,11 @@ func (b *ftpBucket) Remove(_ context.Context, name string) error {
 }
 
 // Close implements bfs.Bucket.
-func (b *ftpBucket) Close() error {
+func (b *bucket) Close() error {
 	return b.conn.Quit()
 }
 
-func (b *ftpBucket) mkdir(dir string) error {
+func (b *bucket) mkdir(dir string) error {
 	err := normError(b.conn.MakeDir(dir))
 	if err != nil && err != bfs.ErrNotFound {
 		return err
@@ -218,7 +217,7 @@ func (b *ftpBucket) mkdir(dir string) error {
 	return nil
 }
 
-func (b *ftpBucket) mkdirAll(dir string) error {
+func (b *bucket) mkdirAll(dir string) error {
 	off := 0
 	for {
 		n := strings.IndexByte(dir[off:], '/')
@@ -233,7 +232,7 @@ func (b *ftpBucket) mkdirAll(dir string) error {
 	return b.mkdir(dir)
 }
 
-func (b *ftpBucket) globDir(ctx context.Context, pattern string, dir string, subdirs []string) ([]*ftp.Entry, []string, error) {
+func (b *bucket) globDir(ctx context.Context, pattern string, dir string, subdirs []string) ([]*ftp.Entry, []string, error) {
 	dir = strings.TrimRight(dir, "/")
 
 	// get entries
@@ -280,54 +279,61 @@ type writer struct {
 	*os.File
 
 	ctx    context.Context
-	bucket *ftpBucket
+	bucket *bucket
 	name   string
 	opts   *bfs.WriteOptions
 
 	closeOnce sync.Once
 }
 
-func (w *writer) Close() (err error) {
+func (w *writer) Discard() error {
+	err := os.ErrClosed
 	w.closeOnce.Do(func() {
 		// delete tempfile in the end
 		fname := w.Name()
 		defer os.Remove(fname)
 
 		// close tempfile
-		if err2 := w.File.Close(); err2 != nil {
-			err = err2
-			return
-		}
+		err = w.File.Close()
+	})
+	return err
+}
 
-		// check context
-		if err2 := w.ctx.Err(); err2 != nil {
-			err = err2
+func (w *writer) Commit() error {
+	err := os.ErrClosed
+	w.closeOnce.Do(func() {
+		// delete tempfile in the end
+		fname := w.Name()
+		defer os.Remove(fname)
+
+		// close tempfile, check context
+		if err = w.File.Close(); err != nil {
+			return
+		} else if err = w.ctx.Err(); err != nil {
 			return
 		}
 
 		// reopen for reading
-		file, err2 := os.Open(fname)
-		if err2 != nil {
-			err = err2
+		var file *os.File
+		if file, err = os.Open(fname); err != nil {
 			return
 		}
 		defer file.Close()
 
 		fullName := w.bucket.withPrefix(w.name)
-		if err2 := w.bucket.mkdirAll(path.Dir(fullName)); err2 != nil {
-			err = err2
+		if err = w.bucket.mkdirAll(path.Dir(fullName)); err != nil {
 			return
 		}
 
 		err = w.bucket.conn.Stor(fullName, file)
 	})
-	return
+	return err
 }
 
 // --------------------------------------------------------------------
 
 type iterator struct {
-	bucket  *ftpBucket
+	bucket  *bucket
 	pattern string
 	files   []*ftp.Entry
 	subdirs []string

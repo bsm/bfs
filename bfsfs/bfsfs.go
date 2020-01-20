@@ -76,11 +76,18 @@ func openAtomicFile(ctx context.Context, name string, tmpDir string) (*atomicFil
 	}, nil
 }
 
-// Close commits the file.
-func (f *atomicFile) Close() error {
+// Discard discards the file.
+func (f *atomicFile) Discard() error {
 	defer f.cleanup()
 
-	if err := f.File.Close(); err != nil {
+	return f.Close()
+}
+
+// Commit commits the file.
+func (f *atomicFile) Commit() error {
+	defer f.cleanup()
+
+	if err := f.Close(); err != nil {
 		return err
 	}
 

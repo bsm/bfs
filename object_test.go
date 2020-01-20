@@ -11,7 +11,6 @@ import (
 
 var _ = Describe("Object", func() {
 	var subject *bfs.Object
-	var _ bfs.ObjectHandle = subject
 	var ctx = context.Background()
 
 	BeforeEach(func() {
@@ -33,8 +32,10 @@ var _ = Describe("Object", func() {
 
 		w, err := subject.Create(ctx, nil)
 		Expect(err).ToNot(HaveOccurred())
+		defer w.Discard()
+
 		Expect(w.Write([]byte("TESTDATA"))).To(Equal(8))
-		Expect(w.Close()).To(Succeed())
+		Expect(w.Commit()).To(Succeed())
 
 		i, err := subject.Head(ctx)
 		Expect(err).ToNot(HaveOccurred())

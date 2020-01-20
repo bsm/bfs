@@ -3,27 +3,10 @@ package bfs
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/url"
 	"path"
 	"strings"
 )
-
-// ObjectHandle is an abstract object handle.
-type ObjectHandle interface {
-	// Name returns an object's name/path.
-	Name() string
-	// Head returns an object's meta info.
-	Head(context.Context) (*MetaInfo, error)
-	// Open opens an object for reading.
-	Open(context.Context) (io.ReadCloser, error)
-	// Create creates/opens a object for writing.
-	Create(context.Context, *WriteOptions) (io.WriteCloser, error)
-	// Remove removes a object.
-	Remove(context.Context) error
-	// Close closes the object.
-	Close() error
-}
 
 // Object is a handle for a single file/object on a Bucket.
 type Object struct {
@@ -77,12 +60,12 @@ func (o *Object) Head(ctx context.Context) (*MetaInfo, error) {
 }
 
 // Open opens an object for reading.
-func (o *Object) Open(ctx context.Context) (io.ReadCloser, error) {
+func (o *Object) Open(ctx context.Context) (Reader, error) {
 	return o.bucket.Open(ctx, o.name)
 }
 
 // Create creates/opens a object for writing.
-func (o *Object) Create(ctx context.Context, opts *WriteOptions) (io.WriteCloser, error) {
+func (o *Object) Create(ctx context.Context, opts *WriteOptions) (Writer, error) {
 	return o.bucket.Create(ctx, o.name, opts)
 }
 
