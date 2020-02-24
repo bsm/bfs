@@ -111,7 +111,7 @@ type Config struct {
 }
 
 func (c *Config) norm() error {
-	if c.ACL == "" {
+	if c.ACL == "" && c.GrantFullControl == "" {
 		c.ACL = DefaultACL
 	}
 
