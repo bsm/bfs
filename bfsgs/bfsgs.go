@@ -25,7 +25,6 @@ package bfsgs
 import (
 	"context"
 	"errors"
-	"net/textproto"
 	"net/url"
 	"strings"
 	"time"
@@ -145,20 +144,12 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 		return nil, normError(err)
 	}
 
-	meta := attrs.Metadata
-	for k, v := range meta {
-		if k2 := textproto.CanonicalMIMEHeaderKey(k); k2 != k {
-			delete(meta, k)
-			meta[k2] = v
-		}
-	}
-
 	return &bfs.MetaInfo{
 		Name:        name,
 		Size:        attrs.Size,
 		ModTime:     attrs.Updated,
 		ContentType: attrs.ContentType,
-		Metadata:    meta,
+		Metadata:    bfs.NormMetadata(attrs.Metadata),
 	}, nil
 }
 
