@@ -41,15 +41,41 @@ import (
 
 func init() {
 	bfs.Register("az", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
-		return nil, errors.New("not implemented")
+		query := u.Query()
 
-		// return New(u.Host, &Config{
-		// 			Prefix:           prefix,
-		// 			ACL:              query.Get("acl"),
-		// 			SSE:              query.Get("sse"),
-		// 			GrantFullControl: query.Get("grant-full-control"),
-		// 			AWS:              awscfg,
-		// 		})
+		var (
+			prefix string
+			cred   azblob.Credential
+		)
+
+		// extract prefix from path
+		path := u.Path
+		if len(path) > 2 {
+			if i := strings.Index(path[1:], "/"); i > 0 {
+				path, prefix = path[:i+1], path[i+2:]
+			}
+		}
+
+		// fallback on prefix query parameter
+		if prefix == "" {
+			prefix = query.Get("prefix")
+		}
+
+		// check if an access_key was provided
+		if s := query.Get("access_key"); s != "" {
+			accountName := strings.TrimSuffix(u.Host, ".blob.core.windows.net")
+
+			var err error
+			cred, err = azblob.NewSharedKeyCredential(accountName, s)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return New("https://"+u.Host+path, &Config{
+			Prefix:     prefix,
+			Credential: cred,
+		})
 	})
 }
 
@@ -79,7 +105,7 @@ type bucket struct {
 }
 
 // New initiates an bfs.Bucket backed by Azure.
-func New(urlString string, cfg *Config) (bfs.Bucket, error) {
+func New(containerURL string, cfg *Config) (bfs.Bucket, error) {
 	config := new(Config)
 	if cfg != nil {
 		*config = *cfg
@@ -88,12 +114,16 @@ func New(urlString string, cfg *Config) (bfs.Bucket, error) {
 		return nil, err
 	}
 
-	u, err := url.Parse(urlString)
+	// parse URL
+	u, err := url.Parse(containerURL)
 	if err != nil {
 		return nil, err
 	}
 
+	// use configured credential if provided
 	credential := config.Credential
+
+	// try to load access key from the environment
 	if credential == nil {
 		if s := os.Getenv("AZURE_STORAGE_ACCESS_KEY"); s != "" {
 			account := strings.TrimSuffix(u.Host, ".blob.core.windows.net")
@@ -101,11 +131,15 @@ func New(urlString string, cfg *Config) (bfs.Bucket, error) {
 			if err != nil {
 				return nil, err
 			}
-		} else if credential == nil {
-			credential = azblob.NewAnonymousCredential()
 		}
 	}
 
+	// fall back on anonymous access
+	if credential == nil {
+		credential = azblob.NewAnonymousCredential()
+	}
+
+	// init a pipeline and return the bucket
 	pipe := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	return &bucket{
 		ContainerURL: azblob.NewContainerURL(*u, pipe),
