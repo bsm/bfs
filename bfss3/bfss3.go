@@ -205,7 +205,7 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 		Size:        aws.Int64Value(resp.ContentLength),
 		ModTime:     aws.TimeValue(resp.LastModified),
 		ContentType: aws.StringValue(resp.ContentType),
-		Metadata:    aws.StringValueMap(resp.Metadata),
+		Metadata:    bfs.NormMetadata(aws.StringValueMap(resp.Metadata)),
 	}, nil
 }
 

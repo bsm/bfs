@@ -106,7 +106,7 @@ func Lint(opts *Options) func() {
 
 			if opts.Metadata {
 				Ω.Expect(info.Metadata).To(Ω.Equal(bfs.Metadata{
-					"X-Custom-Field": "VaLu3",
+					"Cust0m-Key": "VaLu3",
 				}))
 			}
 			if opts.ContentType {
@@ -164,7 +164,7 @@ func Lint(opts *Options) func() {
 
 func writeTestData(bucket bfs.Bucket, name string) error {
 	return bfs.WriteObject(context.Background(), bucket, name, []byte("TESTDATA"), &bfs.WriteOptions{
-		Metadata:    bfs.Metadata{"x-Custom-field": "VaLu3"},
+		Metadata:    bfs.Metadata{"CuSt0m_key": "VaLu3"},
 		ContentType: "text/plain",
 	})
 }

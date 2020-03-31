@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/textproto"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -60,26 +61,42 @@ type Writer interface {
 // Metadata contains metadata values.
 type Metadata map[string]string
 
+// NormMetadata canonicalizes kv pairs (inline) and
+// returns the result.
+func NormMetadata(kv map[string]string) Metadata {
+	for k, v := range kv {
+		if l := canonicalize(k); l != k {
+			delete(kv, k)
+			kv[l] = v
+		}
+	}
+	return kv
+}
+
 // Get gets the value associated with the given key.
 // It is case insensitive; textproto.CanonicalMIMEHeaderKey is used
 // to canonicalize the provided key.
 // If there are no values associated with the key, Get returns "".
 func (m Metadata) Get(key string) string {
-	return m[textproto.CanonicalMIMEHeaderKey(key)]
+	return m[canonicalize(key)]
 }
 
 // Set sets the header entries associated with key to
 // the single element value. It replaces any existing
 // values associated with key.
 func (m Metadata) Set(key, value string) {
-	m[textproto.CanonicalMIMEHeaderKey(key)] = value
+	m[canonicalize(key)] = value
 }
 
 // Del deletes the values associated with key.
 // The key is case insensitive; it is canonicalized by
 // textproto.CanonicalMIMEHeaderKey.
 func (m Metadata) Del(key string) {
-	delete(m, textproto.CanonicalMIMEHeaderKey(key))
+	delete(m, canonicalize(key))
+}
+
+func canonicalize(key string) string {
+	return textproto.CanonicalMIMEHeaderKey(strings.ReplaceAll(key, "_", "-"))
 }
 
 // --------------------------------------------------------------------
