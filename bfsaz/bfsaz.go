@@ -297,6 +297,11 @@ func (w *writer) Discard() error {
 	return err
 }
 
+const (
+	bufferSize = 2 * 1024 * 1024
+	maxBuffers = 3
+)
+
 func (w *writer) Commit() error {
 	err := context.Canceled
 	w.closeOnce.Do(func() {
@@ -317,11 +322,11 @@ func (w *writer) Commit() error {
 		defer file.Close()
 
 		// Upload file
-		_, err = azblob.UploadFileToBlockBlob(w.ctx, file, w.blob, azblob.UploadToBlockBlobOptions{
-			BlobHTTPHeaders: azblob.BlobHTTPHeaders{
-				ContentType: w.opts.GetContentType(),
-			},
-			Metadata: azblob.Metadata(transKeys(w.opts.GetMetadata(), "-", "_")),
+		_, err = azblob.UploadStreamToBlockBlob(w.ctx, file, w.blob, azblob.UploadStreamToBlockBlobOptions{
+			BufferSize:      bufferSize,
+			MaxBuffers:      maxBuffers,
+			BlobHTTPHeaders: azblob.BlobHTTPHeaders{ContentType: w.opts.GetContentType()},
+			Metadata:        azblob.Metadata(transKeys(w.opts.GetMetadata(), "-", "_")),
 		})
 	})
 
