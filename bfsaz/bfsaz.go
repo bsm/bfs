@@ -317,14 +317,12 @@ func (w *writer) Commit() error {
 		defer file.Close()
 
 		// Upload file
-		_, err = w.blob.Upload(
-			w.ctx, file,
-			azblob.BlobHTTPHeaders{
+		_, err = azblob.UploadFileToBlockBlob(w.ctx, file, w.blob, azblob.UploadToBlockBlobOptions{
+			BlobHTTPHeaders: azblob.BlobHTTPHeaders{
 				ContentType: w.opts.GetContentType(),
 			},
-			azblob.Metadata(transKeys(w.opts.GetMetadata(), "-", "_")),
-			azblob.BlobAccessConditions{},
-		)
+			Metadata: azblob.Metadata(transKeys(w.opts.GetMetadata(), "-", "_")),
+		})
 	})
 
 	return normError(err)
