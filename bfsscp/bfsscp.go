@@ -122,7 +122,6 @@ func New(address string, cfg *Config) (bfs.Bucket, error) {
 	}
 
 	return &bucket{
-		// ctx:    ctx,
 		conn:   conn,
 		client: client,
 		config: config,
@@ -148,7 +147,7 @@ func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error)
 		// create a new walker iterator
 		return &walkerIterator{
 			w:            b.client.Walk(b.withPrefix("/")),
-			infoIterator: infoIterator{Ctx: ctx},
+			infoIterator: infoIterator{ctx: ctx},
 		}, nil
 	}
 
@@ -175,18 +174,19 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 
 // Open implements bfs.Bucket.
 func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
-	f, err := b.client.Open(b.withPrefix(name))
+	file, err := b.client.Open(b.withPrefix(name))
 	if err != nil {
 		return nil, normError(err)
 	}
 
-	fi, err := f.Stat()
+	info, err := file.Stat()
 	if err != nil {
-		return nil, multierr.Combine(normError(f.Close()), normError(err))
+		_ = file.Close()
+		return nil, normError(err)
 	}
 
 	// Use file size to ensure limited read and avoid EOFs
-	return &readerCloser{ctx: ctx, r: f, size: fi.Size()}, nil
+	return &reader{File: file, r: io.LimitReader(file, info.Size()), ctx: ctx}, nil
 }
 
 // Create implements bfs.Bucket.
@@ -287,36 +287,31 @@ func (w *writer) Commit() error {
 
 // --------------------------------------------------------
 
-type readerCloser struct {
-	ctx  context.Context
-	r    *sftp.File
-	size int64
+type reader struct {
+	*sftp.File
+	r   io.Reader
+	ctx context.Context
 }
 
-func (rc *readerCloser) Read(out []byte) (int, error) {
-	if err := rc.ctx.Err(); err != nil {
+func (r *reader) Read(out []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
 		return 0, err
 	}
 
-	lr := io.LimitReader(rc.r, rc.size)
-	return lr.Read(out)
-}
-
-func (rc *readerCloser) Close() error {
-	return rc.r.Close()
+	return r.r.Read(out)
 }
 
 // --------------------------------------------------------
 
 type infoIterator struct {
-	Ctx     context.Context
-	Info    os.FileInfo
-	InfoErr error
+	ctx  context.Context
+	info os.FileInfo
+	err  error
 }
 
 // Name returns the current name.
 func (it *infoIterator) Name() string {
-	if f := it.Info; f != nil {
+	if f := it.info; f != nil {
 		return f.Name()
 	}
 	return ""
@@ -324,7 +319,7 @@ func (it *infoIterator) Name() string {
 
 // Size returns the current content length in bytes.
 func (it *infoIterator) Size() int64 {
-	if f := it.Info; f != nil {
+	if f := it.info; f != nil {
 		return f.Size()
 	}
 	return 0
@@ -332,7 +327,7 @@ func (it *infoIterator) Size() int64 {
 
 // ModTime returns the current modification time.
 func (it *infoIterator) ModTime() time.Time {
-	if f := it.Info; f != nil {
+	if f := it.info; f != nil {
 		return f.ModTime()
 	}
 	return time.Time{}
@@ -340,12 +335,12 @@ func (it *infoIterator) ModTime() time.Time {
 
 // Error returns the last iterator error, if any.
 func (it *infoIterator) Error() error {
-	return it.InfoErr
+	return it.err
 }
 
 // Close closes the iterator, should always be deferred.
 func (it *infoIterator) Close() error {
-	it.Info = nil
+	it.info = nil
 	return nil
 }
 
@@ -358,27 +353,27 @@ type walkerIterator struct {
 
 // Next advances the cursor to the next position.
 func (it *walkerIterator) Next() bool {
-	if it.InfoErr != nil {
+	if it.err != nil {
 		return false
 	}
 
-	if err := it.Ctx.Err(); err != nil {
-		it.InfoErr = err
+	if err := it.ctx.Err(); err != nil {
+		it.err = err
 		return false
 	}
 
-	it.Info = nil
+	it.info = nil
 
 	if it.w.Step() {
-		it.Info = it.w.Stat()
-		if it.Info == nil || it.Info.IsDir() {
+		it.info = it.w.Stat()
+		if it.info == nil || it.info.IsDir() {
 			return it.Next()
 		}
 
 		return true
 	}
 
-	it.InfoErr = it.w.Err()
+	it.err = it.w.Err()
 	return false
 }
 
@@ -394,7 +389,7 @@ func newMatchesIterator(ctx context.Context, client *sftp.Client, pattern string
 		client:       client,
 		matches:      matches,
 		pos:          -1,
-		infoIterator: infoIterator{Ctx: ctx},
+		infoIterator: infoIterator{ctx: ctx},
 	}, nil
 }
 
@@ -407,12 +402,12 @@ type matchesIterator struct {
 
 // Next advances the cursor to the next position.
 func (it *matchesIterator) Next() bool {
-	if it.InfoErr != nil {
+	if it.err != nil {
 		return false
 	}
 
-	if err := it.Ctx.Err(); err != nil {
-		it.InfoErr = err
+	if err := it.ctx.Err(); err != nil {
+		it.err = err
 		return false
 	}
 
@@ -421,11 +416,11 @@ func (it *matchesIterator) Next() bool {
 		return false
 	}
 
-	it.Info, it.InfoErr = it.client.Stat(it.matches[it.pos])
-	if it.InfoErr != nil {
+	it.info, it.err = it.client.Stat(it.matches[it.pos])
+	if it.err != nil {
 		return false
 	}
-	if it.Info == nil || it.Info.IsDir() {
+	if it.info == nil || it.info.IsDir() {
 		return it.Next()
 	}
 
@@ -435,13 +430,11 @@ func (it *matchesIterator) Next() bool {
 // --------------------------------------------------------
 
 func normError(err error) error {
-	if err == nil {
-		return nil
-	}
-
 	switch err {
 	case os.ErrNotExist:
 		return bfs.ErrNotFound
+	case nil:
+		return nil
 	}
 	return err
 }
