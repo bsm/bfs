@@ -144,7 +144,7 @@ func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error)
 	}
 
 	// Need to walk the tree for global pattern
-	if pattern == "**" {
+	if strings.Contains(pattern, "**") {
 		// create a new walker iterator
 		return &walkerIterator{
 			w:            b.client.Walk(b.withPrefix("/")),
