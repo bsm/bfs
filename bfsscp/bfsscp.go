@@ -22,7 +22,6 @@
 package bfsscp
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
@@ -43,8 +42,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// Register allows for registering more schemes with SCP
-func Register(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+// register allows for registering more schemes with SCP
+func register(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 	query := u.Query()
 	address := net.JoinHostPort(u.Host, u.Port())
 
@@ -63,8 +62,8 @@ func Register(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 }
 
 func init() {
-	bfs.Register("ssh", Register)
-	bfs.Register("scp", Register)
+	bfs.Register("ssh", register)
+	bfs.Register("scp", register)
 }
 
 // Config is passed to New to configure the SSH connection.
@@ -88,6 +87,7 @@ func (c *Config) norm() error {
 }
 
 type bucket struct {
+	ctx    context.Context
 	conn   *ssh.Client
 	client *sftp.Client
 	config *Config
@@ -122,6 +122,7 @@ func New(address string, cfg *Config) (bfs.Bucket, error) {
 	}
 
 	return &bucket{
+		// ctx:    ctx,
 		conn:   conn,
 		client: client,
 		config: config,
@@ -136,35 +137,44 @@ func (b *bucket) withPrefix(name string) string {
 }
 
 // Glob implements bfs.Bucket.
-func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
+func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	// quick sanity check
 	if _, err := doublestar.Match(pattern, ""); err != nil {
 		return nil, err
 	}
 
-	// create a new iterator
-	return &iterator{
-		w:       b.client.Walk(b.withPrefix("/")),
-		pattern: b.withPrefix(pattern),
-	}, nil
+	// Need to walk the tree for global pattern
+	if pattern == "**" {
+		// create a new walker iterator
+		return &walkerIterator{
+			w:            b.client.Walk(b.withPrefix("/")),
+			infoIterator: infoIterator{Ctx: ctx},
+		}, nil
+	}
+
+	return newMatchesIterator(ctx, b.client, b.withPrefix(pattern))
 }
 
 // Head implements bfs.Bucket.
-func (b *bucket) Head(_ context.Context, name string) (*bfs.MetaInfo, error) {
-	fileInfo, err := b.client.Stat(b.withPrefix(name))
+func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	info, err := b.client.Stat(b.withPrefix(name))
 	if err != nil {
 		return nil, normError(err)
 	}
 
 	return &bfs.MetaInfo{
 		Name:    name,
-		Size:    fileInfo.Size(),
-		ModTime: fileInfo.ModTime(),
+		Size:    info.Size(),
+		ModTime: info.ModTime(),
 	}, nil
 }
 
 // Open implements bfs.Bucket.
-func (b *bucket) Open(_ context.Context, name string) (bfs.Reader, error) {
+func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 	f, err := b.client.Open(b.withPrefix(name))
 	if err != nil {
 		return nil, normError(err)
@@ -172,11 +182,11 @@ func (b *bucket) Open(_ context.Context, name string) (bfs.Reader, error) {
 
 	fi, err := f.Stat()
 	if err != nil {
-		return nil, normError(err)
+		return nil, multierr.Combine(normError(f.Close()), normError(err))
 	}
 
 	// Use file size to ensure limited read and avoid EOFs
-	return &readerCloser{r: f, size: fi.Size()}, nil
+	return &readerCloser{ctx: ctx, r: f, size: fi.Size()}, nil
 }
 
 // Create implements bfs.Bucket.
@@ -196,7 +206,11 @@ func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions
 }
 
 // Remove implements bfs.Bucket.
-func (b *bucket) Remove(_ context.Context, name string) error {
+func (b *bucket) Remove(ctx context.Context, name string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	err := normError(b.client.Remove(b.withPrefix(name)))
 	if err != nil && err != bfs.ErrNotFound {
 		return err
@@ -262,8 +276,7 @@ func (w *writer) Commit() error {
 		}
 
 		var sf *sftp.File
-		sf, err = w.bucket.client.Create(fullName)
-		if err != nil {
+		if sf, err = w.bucket.client.Create(fullName); err != nil {
 			return
 		}
 		_, err = io.Copy(sf, file)
@@ -275,18 +288,18 @@ func (w *writer) Commit() error {
 // --------------------------------------------------------
 
 type readerCloser struct {
+	ctx  context.Context
 	r    *sftp.File
 	size int64
 }
 
 func (rc *readerCloser) Read(out []byte) (int, error) {
-	buf := make([]byte, rc.size)
-	if _, err := rc.r.Read(buf); err != nil {
+	if err := rc.ctx.Err(); err != nil {
 		return 0, err
 	}
 
-	b := bytes.NewBuffer(buf)
-	return b.Read(out)
+	lr := io.LimitReader(rc.r, rc.size)
+	return lr.Read(out)
 }
 
 func (rc *readerCloser) Close() error {
@@ -295,70 +308,128 @@ func (rc *readerCloser) Close() error {
 
 // --------------------------------------------------------
 
-type iterator struct {
-	w       *fs.Walker
-	pattern string
-	file    os.FileInfo
-	err     error
+type infoIterator struct {
+	Ctx     context.Context
+	Info    os.FileInfo
+	InfoErr error
 }
 
-// Next advances the cursor to the next position.
-func (it *iterator) Next() bool {
-	it.file = nil
-
-	if it.w.Step() {
-		it.file = it.w.Stat()
-		if it.file == nil || it.file.IsDir() {
-			return it.Next()
-		}
-
-		if match, err := doublestar.Match(it.pattern, it.w.Path()); err != nil {
-			it.err = err
-			return false
-		} else if match {
-			return true
-		}
-
-		return it.Next()
-	}
-
-	it.err = it.w.Err()
-	return false
-}
-
-// Name returns the name at the current cursor position.
-func (it *iterator) Name() string {
-	if f := it.file; f != nil {
+// Name returns the current name.
+func (it *infoIterator) Name() string {
+	if f := it.Info; f != nil {
 		return f.Name()
 	}
 	return ""
 }
 
-// Size returns the content length in bytes at the current cursor position.
-func (it *iterator) Size() int64 {
-	if f := it.file; f != nil {
+// Size returns the current content length in bytes.
+func (it *infoIterator) Size() int64 {
+	if f := it.Info; f != nil {
 		return f.Size()
 	}
 	return 0
 }
 
-// ModTime returns the modification time at the current cursor position.
-func (it *iterator) ModTime() time.Time {
-	if f := it.file; f != nil {
+// ModTime returns the current modification time.
+func (it *infoIterator) ModTime() time.Time {
+	if f := it.Info; f != nil {
 		return f.ModTime()
 	}
 	return time.Time{}
 }
 
 // Error returns the last iterator error, if any.
-func (it *iterator) Error() error {
-	return it.err
+func (it *infoIterator) Error() error {
+	return it.InfoErr
 }
 
 // Close closes the iterator, should always be deferred.
-func (it *iterator) Close() error {
-	it.file = nil
+func (it *infoIterator) Close() error {
+	it.Info = nil
 	return nil
+}
+
+// --------------------------------------------------------
+
+type walkerIterator struct {
+	infoIterator
+	w *fs.Walker
+}
+
+// Next advances the cursor to the next position.
+func (it *walkerIterator) Next() bool {
+	if it.InfoErr != nil {
+		return false
+	}
+
+	if err := it.Ctx.Err(); err != nil {
+		it.InfoErr = err
+		return false
+	}
+
+	it.Info = nil
+
+	if it.w.Step() {
+		it.Info = it.w.Stat()
+		if it.Info == nil || it.Info.IsDir() {
+			return it.Next()
+		}
+
+		return true
+	}
+
+	it.InfoErr = it.w.Err()
+	return false
+}
+
+// --------------------------------------------------------
+
+func newMatchesIterator(ctx context.Context, client *sftp.Client, pattern string) (*matchesIterator, error) {
+	matches, err := client.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	return &matchesIterator{
+		client:       client,
+		matches:      matches,
+		pos:          -1,
+		infoIterator: infoIterator{Ctx: ctx},
+	}, nil
+}
+
+type matchesIterator struct {
+	infoIterator
+	client  *sftp.Client
+	matches []string
+	pos     int
+}
+
+// Next advances the cursor to the next position.
+func (it *matchesIterator) Next() bool {
+	if it.InfoErr != nil {
+		return false
+	}
+
+	if err := it.Ctx.Err(); err != nil {
+		it.InfoErr = err
+		return false
+	}
+
+	it.pos++
+	if it.pos >= len(it.matches) {
+		return false
+	}
+
+	it.Info, it.InfoErr = it.client.Stat(it.matches[it.pos])
+	if it.InfoErr != nil {
+		return false
+	}
+	if it.Info == nil || it.Info.IsDir() {
+		return it.Next()
+	}
+
+	return true
 }
 
 // --------------------------------------------------------
