@@ -42,6 +42,11 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+func init() {
+	bfs.Register("ssh", register)
+	bfs.Register("scp", register)
+}
+
 // register allows for registering more schemes with SCP
 func register(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 	query := u.Query()
@@ -59,11 +64,6 @@ func register(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 		Prefix:   u.Path,
 		TempDir:  query.Get("tmpdir"),
 	})
-}
-
-func init() {
-	bfs.Register("ssh", register)
-	bfs.Register("scp", register)
 }
 
 // Config is passed to New to configure the SSH connection.
@@ -186,7 +186,7 @@ func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 	}
 
 	// Use file size to ensure limited read and avoid EOFs
-	return &reader{File: file, r: io.LimitReader(file, info.Size()), ctx: ctx}, nil
+	return &reader{File: file, limited: io.LimitReader(file, info.Size()), ctx: ctx}, nil
 }
 
 // Create implements bfs.Bucket.
@@ -197,7 +197,7 @@ func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions
 	}
 
 	return &writer{
-		File:   f,
+		tmp:    f,
 		bucket: b,
 		ctx:    ctx,
 		name:   name,
@@ -226,8 +226,7 @@ func (b *bucket) Close() error {
 // --------------------------------------------------------
 
 type writer struct {
-	*os.File
-
+	tmp    *os.File
 	ctx    context.Context
 	bucket *bucket
 	name   string
@@ -236,15 +235,19 @@ type writer struct {
 	closeOnce sync.Once
 }
 
+func (w *writer) Write(data []byte) (int, error) {
+	return w.tmp.Write(data)
+}
+
 func (w *writer) Discard() error {
 	err := os.ErrClosed
 	w.closeOnce.Do(func() {
 		// delete tempfile in the end
-		fname := w.Name()
+		fname := w.tmp.Name()
 		defer os.Remove(fname)
 
 		// close tempfile
-		err = w.File.Close()
+		err = w.tmp.Close()
 	})
 	return err
 }
@@ -253,11 +256,11 @@ func (w *writer) Commit() error {
 	err := os.ErrClosed
 	w.closeOnce.Do(func() {
 		// delete tempfile in the end
-		fname := w.Name()
+		fname := w.tmp.Name()
 		defer os.Remove(fname)
 
 		// close tempfile, check context
-		if err = w.File.Close(); err != nil {
+		if err = w.tmp.Close(); err != nil {
 			return
 		} else if err = w.ctx.Err(); err != nil {
 			return
@@ -289,8 +292,8 @@ func (w *writer) Commit() error {
 
 type reader struct {
 	*sftp.File
-	r   io.Reader
-	ctx context.Context
+	limited io.Reader
+	ctx     context.Context
 }
 
 func (r *reader) Read(out []byte) (int, error) {
@@ -298,7 +301,7 @@ func (r *reader) Read(out []byte) (int, error) {
 		return 0, err
 	}
 
-	return r.r.Read(out)
+	return r.limited.Read(out)
 }
 
 // --------------------------------------------------------
@@ -379,6 +382,13 @@ func (it *walkerIterator) Next() bool {
 
 // --------------------------------------------------------
 
+type matchesIterator struct {
+	infoIterator
+	client  *sftp.Client
+	matches []string
+	pos     int
+}
+
 func newMatchesIterator(ctx context.Context, client *sftp.Client, pattern string) (*matchesIterator, error) {
 	matches, err := client.Glob(pattern)
 	if err != nil {
@@ -391,13 +401,6 @@ func newMatchesIterator(ctx context.Context, client *sftp.Client, pattern string
 		pos:          -1,
 		infoIterator: infoIterator{ctx: ctx},
 	}, nil
-}
-
-type matchesIterator struct {
-	infoIterator
-	client  *sftp.Client
-	matches []string
-	pos     int
 }
 
 // Next advances the cursor to the next position.
