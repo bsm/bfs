@@ -30,6 +30,20 @@ var _ = Describe("Bucket", func() {
 		}
 	})
 
+	It("should register scp and ssh schemes", func() {
+		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		subject, err := bfsscp.New(serverAddr, &bfsscp.Config{Prefix: prefix, Username: "root", Password: "root", TempDir: "test"})
+		Expect(err).NotTo(HaveOccurred())
+
+		bucket, err := bfs.Connect(context.Background(), "scp://root:root@127.0.0.1:7022/"+prefix+"?tmpdir=test")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(bfsscp.BucketConfig(bucket)).To(Equal(bfsscp.BucketConfig(subject)))
+
+		bucket, err = bfs.Connect(context.Background(), "ssh://root:root@127.0.0.1:7022/"+prefix+"?tmpdir=test")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(bfsscp.BucketConfig(bucket)).To(Equal(bfsscp.BucketConfig(subject)))
+	})
+
 	Context("defaults", lint.Lint(&opts))
 })
 

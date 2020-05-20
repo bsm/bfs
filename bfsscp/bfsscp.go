@@ -50,7 +50,7 @@ func init() {
 // register allows for registering more schemes with SCP
 func register(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 	query := u.Query()
-	address := net.JoinHostPort(u.Host, u.Port())
+	address := net.JoinHostPort(u.Hostname(), u.Port())
 
 	username, password := "", ""
 	if u.User != nil {
