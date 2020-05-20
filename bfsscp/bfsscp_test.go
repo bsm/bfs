@@ -30,6 +30,12 @@ var _ = Describe("Bucket", func() {
 		}
 	})
 
+	It("should register scp scheme", func() {
+		subject, err := bfs.Connect(context.Background(), "scp://root:root@127.0.0.1:7022/prefix?tmpdir=test")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(subject.Close()).To(Succeed())
+	})
+
 	Context("defaults", lint.Lint(&opts))
 })
 

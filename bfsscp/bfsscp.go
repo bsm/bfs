@@ -43,26 +43,22 @@ import (
 )
 
 func init() {
-	bfs.Register("ssh", register)
-	bfs.Register("scp", register)
-}
+	bfs.Register("scp", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+		query := u.Query()
+		address := net.JoinHostPort(u.Hostname(), u.Port())
 
-// register allows for registering more schemes with SCP
-func register(_ context.Context, u *url.URL) (bfs.Bucket, error) {
-	query := u.Query()
-	address := net.JoinHostPort(u.Host, u.Port())
+		username, password := "", ""
+		if u.User != nil {
+			username = u.User.Username()
+			password, _ = u.User.Password()
+		}
 
-	username, password := "", ""
-	if u.User != nil {
-		username = u.User.Username()
-		password, _ = u.User.Password()
-	}
-
-	return New(address, &Config{
-		Username: username,
-		Password: password,
-		Prefix:   u.Path,
-		TempDir:  query.Get("tmpdir"),
+		return New(address, &Config{
+			Username: username,
+			Password: password,
+			Prefix:   u.Path,
+			TempDir:  query.Get("tmpdir"),
+		})
 	})
 }
 
