@@ -10,7 +10,7 @@
 //
 //   func main() {
 //     ctx := context.Background()
-//     b, _ := bfs.Connect(ctx, "ssh://user:pass@hostname:22/path/to/root?tmpdir=%2Fcustom%2Ftmp")
+//     b, _ := bfs.Connect(ctx, "ssh://user:pass@hostname:22/path/to/root?tmpdir=%2Fcustom%2Ftmp&absolute=true")
 //     f, _ := b.Open(ctx, "file/within/root.txt")
 //     ...
 //   }
@@ -18,6 +18,7 @@
 // bfs.Connect supports the following query parameters:
 //
 //   tmpdir - custom temp dir
+//   absolute - to keep the inital slash for prefix, making it an absolute path
 //
 package bfsscp
 
@@ -58,6 +59,7 @@ func init() {
 			Password: password,
 			Prefix:   u.Path,
 			TempDir:  query.Get("tmpdir"),
+			Absolute: query.Get("absolute") == "true",
 		})
 	})
 }
@@ -72,10 +74,22 @@ type Config struct {
 	Prefix string
 	// A custom temp dir.
 	TempDir string
+	// Whether Prefix Paths are absolute or relative
+	Absolute bool
 }
 
 func (c *Config) norm() error {
-	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
+	// By default prefixes should start in the user's dir
+	if !c.Absolute {
+		c.Prefix = strings.TrimPrefix(c.Prefix, "/")
+	}
+
+	// Ensure even blank prefixes use slash when absolute path is prefered
+	if c.Absolute && c.Prefix == "" {
+		c.Prefix = "/"
+	}
+
+	// Add a trailing slash when one doesn't exist
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
 	}
