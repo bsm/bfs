@@ -41,21 +41,22 @@ var _ = Describe("Bucket", func() {
 		subject, err := bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/~/prefix")
 		Expect(err).NotTo(HaveOccurred())
 
-		f, err := subject.Create(ctx, "test", nil)
+		file, err := subject.Create(ctx, "test", nil)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(f.Commit()).To(Succeed())
+		Expect(file.Commit()).To(Succeed())
 
-		i, err := subject.Head(ctx, "test")
+		info, err := subject.Head(ctx, "test")
 		Expect(err).NotTo(HaveOccurred())
-		Expect(i).NotTo(BeNil())
+		Expect(info).NotTo(BeNil())
 
 		Expect(subject.Close()).To(Succeed())
 
 		subject, err = bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/prefix")
 		Expect(err).NotTo(HaveOccurred())
-		i, err = subject.Head(ctx, "test")
+
+		info, err = subject.Head(ctx, "test")
 		Expect(err).To(Equal(bfs.ErrNotFound))
-		Expect(i).To(BeNil())
+		Expect(info).To(BeNil())
 
 		Expect(subject.Close()).To(Succeed())
 	})
