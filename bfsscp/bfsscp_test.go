@@ -32,13 +32,13 @@ var _ = Describe("Bucket", func() {
 	})
 
 	It("should register scp scheme", func() {
-		subject, err := bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/prefix?tmpdir=test")
+		subject, err := bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/~/prefix?tmpdir=test")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(subject.Close()).To(Succeed())
 	})
 
 	It("should allow for absolute and relative paths", func() {
-		subject, err := bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/prefix")
+		subject, err := bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/~/prefix")
 		Expect(err).NotTo(HaveOccurred())
 
 		f, err := subject.Create(ctx, "test", nil)
@@ -51,7 +51,7 @@ var _ = Describe("Bucket", func() {
 
 		Expect(subject.Close()).To(Succeed())
 
-		subject, err = bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/prefix?absolute=true")
+		subject, err = bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/prefix")
 		Expect(err).NotTo(HaveOccurred())
 		i, err = subject.Head(ctx, "test")
 		Expect(err).To(Equal(bfs.ErrNotFound))
