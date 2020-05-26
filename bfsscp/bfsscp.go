@@ -75,7 +75,11 @@ type Config struct {
 }
 
 func (c *Config) norm() error {
-	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
+	// If prefix indicates starting in the user's dir, trim
+	c.Prefix = strings.TrimPrefix(c.Prefix, "/~/")
+	c.Prefix = strings.TrimPrefix(c.Prefix, "/./")
+
+	// Add a trailing slash when one doesn't exist
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
 	}
