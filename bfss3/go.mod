@@ -5,7 +5,6 @@ go 1.14
 replace github.com/bsm/bfs => ../
 
 require (
-	github.com/aws/aws-sdk-go v1.33.18
 	github.com/aws/aws-sdk-go-v2 v1.1.0
 	github.com/aws/aws-sdk-go-v2/config v1.1.0
 	github.com/aws/aws-sdk-go-v2/credentials v1.1.0
