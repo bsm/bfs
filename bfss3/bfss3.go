@@ -83,11 +83,10 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			retryer := retry.NewStandard(func(o *retry.StandardOptions) {
-				o.MaxAttempts = int(maxRetries)
-			})
 			opts = append(opts, config.WithRetryer(func() aws.Retryer {
-				return retryer
+				return retry.NewStandard(func(o *retry.StandardOptions) {
+					o.MaxAttempts = int(maxRetries)
+				})
 			}))
 		}
 
@@ -152,7 +151,7 @@ func New(ctx context.Context, name string, c *Config) (bfs.Bucket, error) {
 
 	awsConfig, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	client := s3.NewFromConfig(awsConfig)
 	uploader := manager.NewUploader(client)
