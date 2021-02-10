@@ -29,6 +29,7 @@ package bfss3
 
 import (
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -46,6 +47,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
@@ -343,25 +345,11 @@ func normError(err error) error {
 		return nil
 	}
 
-	// TODO: SDK v2 doesn't have many errors/error vars.
-	// Maybe most of them are now smth like:
-	// https://pkg.go.dev/github.com/aws/smithy-go/transport/http#example-ResponseError
-	// Check and convert properly.
-
-	// switch e := err.(type) {
-	// case awserr.RequestFailure:
-	// 	switch e.StatusCode() {
-	// 	case http.StatusNotFound:
-	// 		return bfs.ErrNotFound
-	// 	}
-	// case awserr.Error:
-	// 	switch e.Code() {
-	// 	case s3v1.ErrCodeNoSuchKey:
-	// 		return bfs.ErrNotFound
-	// 	case request.CanceledErrorCode:
-	// 		return context.Canceled
-	// 	}
-	// }
+	if e := new(awshttp.ResponseError); errors.As(err, &e) {
+		if e.HTTPStatusCode() == http.StatusNotFound {
+			return bfs.ErrNotFound
+		}
+	}
 
 	return err
 }
