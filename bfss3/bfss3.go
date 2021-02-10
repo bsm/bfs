@@ -100,7 +100,7 @@ func init() {
 			ACL:              query.Get("acl"),
 			SSE:              query.Get("sse"),
 			GrantFullControl: query.Get("grant-full-control"),
-			AWS:              cfg,
+			AWS:              &cfg,
 		})
 	})
 }
@@ -108,7 +108,7 @@ func init() {
 // Config is passed to New to configure the S3 connection.
 type Config struct {
 	// Native AWS configuration.
-	AWS aws.Config
+	AWS *aws.Config
 	// Custom ACL, defaults to DefaultACL.
 	ACL string
 	// GrantFullControl setting.
@@ -119,7 +119,15 @@ type Config struct {
 	Prefix string
 }
 
-func (c *Config) norm() error {
+func (c *Config) norm(ctx context.Context) error {
+	if c.AWS == nil {
+		aws, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			return err
+		}
+		c.AWS = &aws
+	}
+
 	if c.ACL == "" && c.GrantFullControl == "" {
 		c.ACL = DefaultACL
 	}
@@ -145,15 +153,11 @@ func New(ctx context.Context, name string, c *Config) (bfs.Bucket, error) {
 	if cfg != nil {
 		*cfg = *c
 	}
-	if err := cfg.norm(); err != nil {
+	if err := cfg.norm(ctx); err != nil {
 		return nil, err
 	}
 
-	awsConfig, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	client := s3.NewFromConfig(awsConfig)
+	client := s3.NewFromConfig(*cfg.AWS)
 	uploader := manager.NewUploader(client)
 
 	return &bucket{

@@ -36,10 +36,10 @@ var _ = Describe("Bucket", func() {
 
 	BeforeEach(func() {
 		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		subject, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: prefix, AWS: awsConfig})
+		subject, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: prefix, AWS: &awsConfig})
 		Expect(err).NotTo(HaveOccurred())
 
-		readonly, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "m/", AWS: awsConfig})
+		readonly, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "m/", AWS: &awsConfig})
 		Expect(err).NotTo(HaveOccurred())
 
 		opts = lint.Options{
@@ -68,7 +68,7 @@ func TestSuite(t *testing.T) {
 
 func sandboxCheck() error {
 	ctx := context.Background()
-	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{AWS: awsConfig})
+	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{AWS: &awsConfig})
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func sandboxCheck() error {
 
 var _ = AfterSuite(func() {
 	ctx := context.Background()
-	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "x/", AWS: awsConfig})
+	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "x/", AWS: &awsConfig})
 	Expect(err).NotTo(HaveOccurred())
 	defer b.Close()
 
