@@ -2,7 +2,6 @@ package bfss3_test
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -59,7 +58,6 @@ var _ = Describe("Bucket", func() {
 
 func TestSuite(t *testing.T) {
 	if err := sandboxCheck(); err != nil {
-		fmt.Printf("ERR %#v\n", err)
 		t.Skipf("skipping test, no sandbox access: %v", err)
 		return
 	}
