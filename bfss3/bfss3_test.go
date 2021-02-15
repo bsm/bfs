@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/bfss3"
 	"github.com/bsm/bfs/testdata/lint"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,17 +19,27 @@ import (
 
 const bucketName = "bsm-bfs-unittest"
 
-var awsConfig = aws.Config{Region: aws.String("us-east-1")}
+var awsConfig aws.Config
+
+func init() {
+	c, err := config.LoadDefaultConfig(context.Background(), config.WithRegion("us-east-1"))
+	if err != nil {
+		panic(err)
+	}
+	awsConfig = c
+}
 
 var _ = Describe("Bucket", func() {
 	var opts lint.Options
 
+	ctx := context.Background()
+
 	BeforeEach(func() {
 		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		subject, err := bfss3.New(bucketName, &bfss3.Config{Prefix: prefix, AWS: awsConfig})
+		subject, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: prefix, AWS: &awsConfig})
 		Expect(err).NotTo(HaveOccurred())
 
-		readonly, err := bfss3.New(bucketName, &bfss3.Config{Prefix: "m/", AWS: awsConfig})
+		readonly, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "m/", AWS: &awsConfig})
 		Expect(err).NotTo(HaveOccurred())
 
 		opts = lint.Options{
@@ -56,7 +68,7 @@ func TestSuite(t *testing.T) {
 
 func sandboxCheck() error {
 	ctx := context.Background()
-	b, err := bfss3.New(bucketName, &bfss3.Config{AWS: awsConfig})
+	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{AWS: &awsConfig})
 	if err != nil {
 		return err
 	}
@@ -70,7 +82,7 @@ func sandboxCheck() error {
 
 var _ = AfterSuite(func() {
 	ctx := context.Background()
-	b, err := bfss3.New(bucketName, &bfss3.Config{Prefix: "x/", AWS: awsConfig})
+	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "x/", AWS: &awsConfig})
 	Expect(err).NotTo(HaveOccurred())
 	defer b.Close()
 

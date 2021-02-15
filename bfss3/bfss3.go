@@ -29,6 +29,7 @@ package bfss3
 
 import (
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -40,17 +41,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3iface"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/bmatcuk/doublestar"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // DefaultACL is the default ACL setting.
@@ -59,44 +61,56 @@ const DefaultACL = "bucket-owner-full-control"
 func init() {
 	bfs.Register("s3", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
-		awscfg := aws.Config{}
-
-		if s := query.Get("aws_access_key_id"); s != "" {
-			awscfg.Credentials = credentials.NewStaticCredentials(
-				s,
-				query.Get("aws_secret_access_key"),
-				query.Get("aws_session_token"),
-			)
-		}
-		if s := query.Get("region"); s != "" {
-			awscfg.Region = aws.String(s)
-		}
-		if s := query.Get("max_retries"); s != "" {
-			if n, err := strconv.Atoi(s); err == nil {
-				awscfg.MaxRetries = aws.Int(n)
-			}
-		}
 
 		prefix := u.Path
 		if prefix == "" {
 			prefix = query.Get("prefix")
 		}
 
-		return New(u.Host, &Config{
+		var opts []func(*config.LoadOptions) error
+
+		if s := query.Get("aws_access_key_id"); s != "" {
+			creds := aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(
+				s,
+				query.Get("aws_secret_access_key"),
+				query.Get("aws_session_token"),
+			))
+			opts = append(opts, config.WithCredentialsProvider(creds))
+		}
+		if s := query.Get("region"); s != "" {
+			opts = append(opts, config.WithRegion(s))
+		}
+		if s := query.Get("max_retries"); s != "" {
+			maxRetries, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, config.WithRetryer(func() aws.Retryer {
+				return retry.NewStandard(func(o *retry.StandardOptions) {
+					o.MaxAttempts = int(maxRetries)
+				})
+			}))
+		}
+
+		cfg, err := config.LoadDefaultConfig(ctx, opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		return New(ctx, u.Host, &Config{
 			Prefix:           prefix,
 			ACL:              query.Get("acl"),
 			SSE:              query.Get("sse"),
 			GrantFullControl: query.Get("grant-full-control"),
-			AWS:              awscfg,
+			AWS:              &cfg,
 		})
 	})
 }
 
 // Config is passed to New to configure the S3 connection.
 type Config struct {
-	// Native AWS configuration, used to create a Session,
-	// unless one is already passed.
-	AWS aws.Config
+	// Native AWS configuration.
+	AWS *aws.Config
 	// Custom ACL, defaults to DefaultACL.
 	ACL string
 	// GrantFullControl setting.
@@ -105,24 +119,19 @@ type Config struct {
 	SSE string
 	// An optional path prefix
 	Prefix string
-	// An optional custom session.
-	// If nil, a new session will be created using the AWS config.
-	Session *session.Session
 }
 
-func (c *Config) norm() error {
-	if c.ACL == "" && c.GrantFullControl == "" {
-		c.ACL = DefaultACL
-	}
-
-	if c.Session == nil {
-		sess, err := session.NewSession(&c.AWS, &aws.Config{
-			HTTPClient: newHTTPClientWithoutCompression(),
-		})
+func (c *Config) norm(ctx context.Context) error {
+	if c.AWS == nil {
+		aws, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
 			return err
 		}
-		c.Session = sess
+		c.AWS = &aws
+	}
+
+	if c.ACL == "" && c.GrantFullControl == "" {
+		c.ACL = DefaultACL
 	}
 
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
@@ -134,29 +143,30 @@ func (c *Config) norm() error {
 }
 
 type bucket struct {
-	s3iface.S3API
+	*s3.Client
 	bucket   string
 	config   *Config
-	uploader *s3manager.Uploader
+	uploader *manager.Uploader
 }
 
 // New initiates an bfs.Bucket backed by S3.
-func New(name string, cfg *Config) (bfs.Bucket, error) {
-	config := new(Config)
+func New(ctx context.Context, name string, c *Config) (bfs.Bucket, error) {
+	cfg := new(Config)
 	if cfg != nil {
-		*config = *cfg
+		*cfg = *c
 	}
-	if err := config.norm(); err != nil {
+	if err := cfg.norm(ctx); err != nil {
 		return nil, err
 	}
 
-	client := s3.New(config.Session)
+	client := s3.NewFromConfig(*cfg.AWS)
+	uploader := manager.NewUploader(client)
 
 	return &bucket{
-		S3API:    client,
+		Client:   client,
 		bucket:   name,
-		config:   config,
-		uploader: s3manager.NewUploaderWithClient(client),
+		config:   cfg,
+		uploader: uploader,
 	}, nil
 }
 
@@ -192,7 +202,7 @@ func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error)
 
 // Head implements bfs.Bucket.
 func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
-	resp, err := b.HeadObjectWithContext(ctx, &s3.HeadObjectInput{
+	resp, err := b.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(b.withPrefix(name)),
 	})
@@ -202,16 +212,16 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 
 	return &bfs.MetaInfo{
 		Name:        name,
-		Size:        aws.Int64Value(resp.ContentLength),
-		ModTime:     aws.TimeValue(resp.LastModified),
-		ContentType: aws.StringValue(resp.ContentType),
-		Metadata:    bfs.NormMetadata(aws.StringValueMap(resp.Metadata)),
+		Size:        resp.ContentLength,
+		ModTime:     aws.ToTime(resp.LastModified),
+		ContentType: aws.ToString(resp.ContentType),
+		Metadata:    bfs.NormMetadata(resp.Metadata),
 	}, nil
 }
 
 // Open implements bfs.Bucket.
 func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
-	resp, err := b.GetObjectWithContext(ctx, &s3.GetObjectInput{
+	resp, err := b.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(b.withPrefix(name)),
 	})
@@ -220,7 +230,7 @@ func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 	}
 	return &response{
 		ReadCloser:    resp.Body,
-		ContentLength: aws.Int64Value(resp.ContentLength),
+		ContentLength: resp.ContentLength,
 	}, nil
 }
 
@@ -242,7 +252,7 @@ func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions
 
 // Remove implements bfs.Bucket.
 func (b *bucket) Remove(ctx context.Context, name string) error {
-	_, err := b.DeleteObjectWithContext(ctx, &s3.DeleteObjectInput{
+	_, err := b.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(b.bucket),
 		Key:    aws.String(b.withPrefix(name)),
 	})
@@ -252,13 +262,13 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 // Copy supports copying of objects within the bucket.
 func (b *bucket) Copy(ctx context.Context, src, dst string) error {
 	source := path.Join("/", b.bucket, b.withPrefix(src))
-	_, err := b.CopyObjectWithContext(ctx, &s3.CopyObjectInput{
+	_, err := b.CopyObject(ctx, &s3.CopyObjectInput{
 		Bucket:               aws.String(b.bucket),
 		CopySource:           aws.String(source),
 		Key:                  aws.String(b.withPrefix(dst)),
-		ACL:                  strPresence(b.config.ACL),
+		ACL:                  types.ObjectCannedACL(b.config.ACL),
 		GrantFullControl:     strPresence(b.config.GrantFullControl),
-		ServerSideEncryption: strPresence(b.config.SSE),
+		ServerSideEncryption: types.ServerSideEncryption(b.config.SSE),
 	})
 	return err
 }
@@ -313,15 +323,15 @@ func (w *writer) Commit() error {
 		defer file.Close()
 
 		// Upload file
-		_, err = w.bucket.uploader.UploadWithContext(w.ctx, &s3manager.UploadInput{
+		_, err = w.bucket.uploader.Upload(w.ctx, &s3.PutObjectInput{
 			Bucket:               aws.String(w.bucket.bucket),
 			Key:                  aws.String(w.bucket.withPrefix(w.name)),
 			Body:                 file,
 			ContentType:          aws.String(w.opts.GetContentType()),
-			Metadata:             aws.StringMap(w.opts.GetMetadata()),
-			ACL:                  strPresence(w.bucket.config.ACL),
+			Metadata:             w.opts.GetMetadata(),
+			ACL:                  types.ObjectCannedACL(w.bucket.config.ACL),
 			GrantFullControl:     strPresence(w.bucket.config.GrantFullControl),
-			ServerSideEncryption: strPresence(w.bucket.config.SSE),
+			ServerSideEncryption: types.ServerSideEncryption(w.bucket.config.SSE),
 		})
 	})
 
@@ -335,20 +345,12 @@ func normError(err error) error {
 		return nil
 	}
 
-	switch e := err.(type) {
-	case awserr.RequestFailure:
-		switch e.StatusCode() {
-		case http.StatusNotFound:
+	if e := new(awshttp.ResponseError); errors.As(err, &e) {
+		if e.HTTPStatusCode() == http.StatusNotFound {
 			return bfs.ErrNotFound
-		}
-	case awserr.Error:
-		switch e.Code() {
-		case s3.ErrCodeNoSuchKey:
-			return bfs.ErrNotFound
-		case request.CanceledErrorCode:
-			return context.Canceled
 		}
 	}
+
 	return err
 }
 
@@ -453,7 +455,7 @@ func (i *iterator) fetchNextPage() error {
 	i.page = i.page[:0]
 	i.pos = -1
 
-	res, err := i.parent.ListObjectsV2WithContext(i.ctx, &s3.ListObjectsV2Input{
+	res, err := i.parent.ListObjectsV2(i.ctx, &s3.ListObjectsV2Input{
 		Bucket:            aws.String(i.parent.bucket),
 		Prefix:            aws.String(i.parent.config.Prefix),
 		ContinuationToken: i.token,
@@ -466,18 +468,14 @@ func (i *iterator) fetchNextPage() error {
 	i.last = i.token == nil
 
 	for _, obj := range res.Contents {
-		if obj == nil {
-			continue
-		}
-
-		name := i.parent.stripPrefix(aws.StringValue(obj.Key))
+		name := i.parent.stripPrefix(aws.ToString(obj.Key))
 		if ok, err := doublestar.Match(i.pattern, name); err != nil {
 			return err
 		} else if ok {
 			i.page = append(i.page, object{
 				key:     name,
-				size:    aws.Int64Value(obj.Size),
-				modTime: aws.TimeValue(obj.LastModified),
+				size:    obj.Size,
+				modTime: aws.ToTime(obj.LastModified),
 			})
 		}
 	}

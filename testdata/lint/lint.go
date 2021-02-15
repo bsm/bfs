@@ -2,6 +2,7 @@ package lint
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/bsm/bfs"
@@ -62,7 +63,10 @@ func Lint(opts *Options) func() {
 
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
 			cancel()
-			Ω.Expect(blank.Commit()).To(Ω.Equal(context.Canceled))
+
+			commitErr := blank.Commit()
+			Ω.Expect(errors.Is(commitErr, context.Canceled)).To(Ω.BeTrue())
+
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
 			Ω.Expect(blank.Discard()).NotTo(Ω.Succeed())
 		})
