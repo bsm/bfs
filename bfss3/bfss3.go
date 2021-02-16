@@ -193,10 +193,15 @@ func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error)
 		return nil, err
 	}
 
+	p := s3.NewListObjectsV2Paginator(b, &s3.ListObjectsV2Input{
+		Bucket: aws.String(b.bucket),
+		Prefix: aws.String(b.config.Prefix),
+	})
 	return &iterator{
-		parent:  b,
-		ctx:     ctx,
-		pattern: pattern,
+		ctx:       ctx,
+		bucket:    b,
+		paginator: p,
+		pattern:   pattern,
 	}, nil
 }
 
@@ -385,10 +390,11 @@ func (r *response) Read(p []byte) (n int, err error) {
 // --------------------------------------------------------------------
 
 type iterator struct {
-	parent  *bucket
-	ctx     context.Context
-	pattern string
-	token   *string
+	ctx context.Context
+
+	bucket    interface{ stripPrefix(string) string }
+	paginator *s3.ListObjectsV2Paginator
+	pattern   string
 
 	err  error
 	last bool // indicates last page
@@ -438,7 +444,7 @@ func (i *iterator) Next() bool {
 		return true
 	}
 
-	if i.last {
+	if !i.paginator.HasMorePages() {
 		return false
 	}
 
@@ -455,20 +461,13 @@ func (i *iterator) fetchNextPage() error {
 	i.page = i.page[:0]
 	i.pos = -1
 
-	res, err := i.parent.ListObjectsV2(i.ctx, &s3.ListObjectsV2Input{
-		Bucket:            aws.String(i.parent.bucket),
-		Prefix:            aws.String(i.parent.config.Prefix),
-		ContinuationToken: i.token,
-	})
+	res, err := i.paginator.NextPage(i.ctx)
 	if err != nil {
 		return err
 	}
 
-	i.token = res.NextContinuationToken
-	i.last = i.token == nil
-
 	for _, obj := range res.Contents {
-		name := i.parent.stripPrefix(aws.ToString(obj.Key))
+		name := i.bucket.stripPrefix(aws.ToString(obj.Key))
 		if ok, err := doublestar.Match(i.pattern, name); err != nil {
 			return err
 		} else if ok {
@@ -480,13 +479,4 @@ func (i *iterator) fetchNextPage() error {
 		}
 	}
 	return nil
-}
-
-// --------------------------------------------------------------------
-
-// newHTTPClientWithoutCompression returns an HTTP client with implicit GZIP compression disabled.
-func newHTTPClientWithoutCompression() *http.Client {
-	t := http.DefaultTransport.(*http.Transport).Clone()
-	t.DisableCompression = true
-	return &http.Client{Transport: t}
 }
