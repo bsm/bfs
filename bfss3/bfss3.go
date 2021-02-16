@@ -392,7 +392,7 @@ func (r *response) Read(p []byte) (n int, err error) {
 type iterator struct {
 	ctx context.Context
 
-	bucket    interface{ stripPrefix(string) string }
+	bucket    *bucket
 	paginator *s3.ListObjectsV2Paginator
 	pattern   string
 
