@@ -20,6 +20,7 @@
 //   aws_access_key_id      - custom AWS credentials
 //   aws_secret_access_key  - custom AWS credentials
 //   aws_session_token      - custom AWS credentials
+//   assume_role            - specify an AWS role ARN to assume
 //   region                 - specify an AWS region
 //   max_retries            - specify maximum number of retries
 //   acl                    - custom ACL, defaults to DefaultACL
@@ -50,9 +51,11 @@ import (
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 // DefaultACL is the default ACL setting.
@@ -95,6 +98,14 @@ func init() {
 		cfg, err := config.LoadDefaultConfig(ctx, opts...)
 		if err != nil {
 			return nil, err
+		}
+
+		if s := query.Get("assume_role"); s != "" {
+			cfg = aws.Config{
+				Credentials: aws.NewCredentialsCache(
+					stscreds.NewAssumeRoleProvider(sts.NewFromConfig(cfg), s),
+				),
+			}
 		}
 
 		return New(ctx, u.Host, &Config{
