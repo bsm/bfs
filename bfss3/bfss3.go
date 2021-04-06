@@ -101,11 +101,9 @@ func init() {
 		}
 
 		if s := query.Get("assume_role"); s != "" {
-			cfg = aws.Config{
-				Credentials: aws.NewCredentialsCache(
-					stscreds.NewAssumeRoleProvider(sts.NewFromConfig(cfg), s),
-				),
-			}
+			cfg.Credentials = aws.NewCredentialsCache(
+				stscreds.NewAssumeRoleProvider(sts.NewFromConfig(cfg), s),
+			)
 		}
 
 		return New(ctx, u.Host, &Config{
