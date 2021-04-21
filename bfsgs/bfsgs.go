@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v3"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
 	giterator "google.golang.org/api/iterator"
