@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/bsm/bfs/internal"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
-	. "github.com/onsi/gomega"
+	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/ginkgo/extensions/table"
+	. "github.com/bsm/gomega"
 )
 
 var _ = DescribeTable("WithinNamespace",

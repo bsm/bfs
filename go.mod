@@ -3,7 +3,7 @@ module github.com/bsm/bfs
 go 1.13
 
 require (
-	github.com/bmatcuk/doublestar v1.3.1
-	github.com/onsi/ginkgo v1.14.0
-	github.com/onsi/gomega v1.10.1
+	github.com/bmatcuk/doublestar/v3 v3.0.0
+	github.com/bsm/ginkgo v1.16.0
+	github.com/bsm/gomega v1.11.0
 )

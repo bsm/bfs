@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v3"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
 )

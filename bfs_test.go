@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/bsm/bfs"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/gomega"
 )
 
 // ------------------------------------------------------------------------

@@ -25,7 +25,6 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/url"
 	"os"
 	"path"
@@ -33,7 +32,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v3"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
 	"github.com/kr/fs"
@@ -45,15 +44,13 @@ import (
 func init() {
 	bfs.Register("scp", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
-		address := net.JoinHostPort(u.Hostname(), u.Port())
-
 		username, password := "", ""
 		if u.User != nil {
 			username = u.User.Username()
 			password, _ = u.User.Password()
 		}
 
-		return New(address, &Config{
+		return New(u.Host, &Config{
 			Username: username,
 			Password: password,
 			Prefix:   u.Path,

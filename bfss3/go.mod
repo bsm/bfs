@@ -5,14 +5,14 @@ go 1.14
 replace github.com/bsm/bfs => ../
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.1.0
-	github.com/aws/aws-sdk-go-v2/config v1.1.0
-	github.com/aws/aws-sdk-go-v2/credentials v1.1.0
-	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.0.1
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.1.0
-	github.com/aws/aws-sdk-go-v2/service/sts v1.1.0
-	github.com/bmatcuk/doublestar v1.3.1
-	github.com/bsm/bfs v0.10.5-0.20200804104424-50dd9ff4f4d4
-	github.com/onsi/ginkgo v1.14.0
-	github.com/onsi/gomega v1.10.1
+	github.com/aws/aws-sdk-go-v2 v1.3.3
+	github.com/aws/aws-sdk-go-v2/config v1.1.6
+	github.com/aws/aws-sdk-go-v2/credentials v1.1.6
+	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.1.3
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.5.0
+	github.com/aws/aws-sdk-go-v2/service/sts v1.3.0
+	github.com/bmatcuk/doublestar/v3 v3.0.0
+	github.com/bsm/bfs v0.0.0-00010101000000-000000000000
+	github.com/bsm/ginkgo v1.16.0
+	github.com/bsm/gomega v1.11.0
 )

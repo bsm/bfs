@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 
 	"github.com/bsm/bfs"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/gomega"
 )
 
 var _ = Describe("Object", func() {

@@ -10,8 +10,8 @@ import (
 	"github.com/bsm/bfs/bfsaz"
 	"github.com/bsm/bfs/testdata/lint"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/gomega"
 )
 
 const (

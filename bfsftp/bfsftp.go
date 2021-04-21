@@ -24,7 +24,6 @@ package bfsftp
 import (
 	"context"
 	"io/ioutil"
-	"net"
 	"net/textproto"
 	"net/url"
 	"os"
@@ -33,24 +32,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v3"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
 	"github.com/jlaffaye/ftp"
 )
 
 func init() {
-	bfs.Register("ftp", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+	bfs.Register("ftp", func(ctx context.Context, u *url.URL) (bfs.Bucket, error) {
 		query := u.Query()
-		address := net.JoinHostPort(u.Host, u.Port())
-
 		username, password := "", ""
 		if u.User != nil {
 			username = u.User.Username()
 			password, _ = u.User.Password()
 		}
 
-		return New(address, &Config{
+		return Connect(ctx, u.Host, &Config{
 			Username: username,
 			Password: password,
 			Prefix:   u.Path,
@@ -84,8 +81,8 @@ type bucket struct {
 	config *Config
 }
 
-// New initiates an bfs.Bucket backed by FTP.
-func New(address string, cfg *Config) (bfs.Bucket, error) {
+// Connect initiates an bfs.Bucket backed by FTP.
+func Connect(ctx context.Context, address string, cfg *Config) (bfs.Bucket, error) {
 	config := new(Config)
 	if cfg != nil {
 		*config = *cfg
@@ -94,7 +91,7 @@ func New(address string, cfg *Config) (bfs.Bucket, error) {
 		return nil, err
 	}
 
-	conn, err := ftp.Dial(address)
+	conn, err := ftp.Dial(address, ftp.DialWithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -112,13 +109,9 @@ func New(address string, cfg *Config) (bfs.Bucket, error) {
 	}, nil
 }
 
-func (b *bucket) stripPrefix(name string) string {
-	if b.config.Prefix == "" {
-		return name
-	}
-	name = strings.TrimPrefix(name, b.config.Prefix)
-	name = strings.TrimPrefix(name, "/")
-	return name
+// New initiates an bfs.Bucket backed by FTP.
+func New(address string, cfg *Config) (bfs.Bucket, error) {
+	return Connect(context.Background(), address, cfg)
 }
 
 func (b *bucket) withPrefix(name string) string {
