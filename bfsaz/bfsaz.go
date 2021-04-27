@@ -342,12 +342,6 @@ type iterator struct {
 	page []azblob.BlobItem
 }
 
-type object struct {
-	key     string
-	size    int64
-	modTime time.Time
-}
-
 func (i *iterator) Close() error {
 	i.last = true
 	i.pos = len(i.page)
