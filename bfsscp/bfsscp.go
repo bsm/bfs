@@ -84,7 +84,6 @@ func (c *Config) norm() error {
 }
 
 type bucket struct {
-	ctx    context.Context
 	conn   *ssh.Client
 	client *sftp.Client
 	config *Config
@@ -233,6 +232,9 @@ type writer struct {
 }
 
 func (w *writer) Write(data []byte) (int, error) {
+	if err := w.ctx.Err(); err != nil {
+		return 0, err
+	}
 	return w.tmp.Write(data)
 }
 
@@ -280,7 +282,6 @@ func (w *writer) Commit() error {
 			return
 		}
 		_, err = io.Copy(sf, file)
-		return
 	})
 	return err
 }
