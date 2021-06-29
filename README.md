@@ -1,8 +1,7 @@
 # BFS
 
 [![GoDoc](https://godoc.org/github.com/bsm/bfs?status.svg)](https://godoc.org/github.com/bsm/bfs)
-[![Build Status](https://travis-ci.org/bsm/bfs.svg?branch=master)](https://travis-ci.org/bsm/bfs)
-[![Go Report Card](https://goreportcard.com/badge/github.com/bsm/bfs)](https://goreportcard.com/report/github.com/bsm/bfs)
+[![Test](https://github.com/bsm/bfs/actions/workflows/test.yml/badge.svg)](https://github.com/bsm/bfs/actions/workflows/test.yml)
 
 Multi-adapter bucket-based file system abstraction.
 
@@ -32,16 +31,16 @@ func main() {
 	bucket := bfs.NewInMem()
 
 	// Write object
-	o1, err := bucket.Create(ctx, "nested/file.txt")
+	o1, err := bucket.Create(ctx, "nested/file.txt", nil)
 	if err != nil {
 		panic(err)
 	}
-	defer o1.Close()
+	defer o1.Discard()
 
 	if _, err := o1.Write([]byte("TESTDATA")); err != nil {
 		panic(err)
 	}
-	if err := o1.Close(); err != nil {
+	if err := o1.Commit(); err != nil {
 		panic(err)
 	}
 
