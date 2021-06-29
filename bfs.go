@@ -222,3 +222,11 @@ func Register(scheme string, resv Resolver) {
 	}
 	registry[scheme] = resv
 }
+
+// Unregister removes a registered scheme. This is only really useful in tests.
+func Unregister(scheme string) {
+	registryLock.Lock()
+	defer registryLock.Unlock()
+
+	delete(registry, scheme)
+}

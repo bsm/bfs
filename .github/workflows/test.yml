@@ -7,7 +7,16 @@ on:
     branches:
       - main
 jobs:
-  unit:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Run lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,16 +34,6 @@ jobs:
         ports:
           - 7022:22
     steps:
-      - name: Fetch staticcheck
-        uses: engineerd/configurator@v0.0.6
-        with:
-          name: staticcheck
-          fromGitHubReleases: true
-          repo: dominikh/go-tools
-          version: latest
-          urlTemplate: "https://github.com/dominikh/go-tools/releases/download/2020.2.3/staticcheck_linux_amd64.tar.gz"
-          pathInArchive: staticcheck/staticcheck
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Checkout
         uses: actions/checkout@v2
       - name: Cache dependencies
@@ -62,5 +61,3 @@ jobs:
           aws-region: us-east-1
       - name: Run tests
         run: make test
-      - name: Run staticcheck
-        run: make staticcheck
