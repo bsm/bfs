@@ -1,0 +1,21 @@
+name: Lint
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  golangci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          working-directory: ${{ matrix.package }}
