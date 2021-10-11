@@ -100,7 +100,7 @@ func (c *Config) norm() error {
 }
 
 type bucket struct {
-	azblob.ContainerURL
+	ctu    azblob.ContainerURL
 	config *Config
 }
 
@@ -142,8 +142,8 @@ func New(containerURL string, cfg *Config) (bfs.Bucket, error) {
 	// init a pipeline and return the bucket
 	pipe := azblob.NewPipeline(credential, azblob.PipelineOptions{})
 	return &bucket{
-		ContainerURL: azblob.NewContainerURL(*u, pipe),
-		config:       config,
+		ctu:    azblob.NewContainerURL(*u, pipe),
+		config: config,
 	}, nil
 }
 
@@ -179,8 +179,8 @@ func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error)
 
 // Head implements bfs.Bucket.
 func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
-	resp, err := b.NewBlockBlobURL(b.withPrefix(name)).
-		GetProperties(ctx, azblob.BlobAccessConditions{})
+	resp, err := b.blob(name).
+		GetProperties(ctx, azblob.BlobAccessConditions{}, azblob.ClientProvidedKeyOptions{})
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -196,8 +196,8 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 
 // Open implements bfs.Bucket.
 func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
-	resp, err := b.NewBlockBlobURL(b.withPrefix(name)).
-		Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false)
+	resp, err := b.blob(name).
+		Download(ctx, 0, azblob.CountToEnd, azblob.BlobAccessConditions{}, false, azblob.ClientProvidedKeyOptions{})
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -218,14 +218,14 @@ func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions
 	return &writer{
 		File: f,
 		ctx:  ctx,
-		blob: b.NewBlockBlobURL(b.withPrefix(name)),
+		blob: b.blob(name),
 		opts: opts,
 	}, nil
 }
 
 // Remove implements bfs.Bucket.
 func (b *bucket) Remove(ctx context.Context, name string) error {
-	_, err := b.NewBlockBlobURL(b.withPrefix(name)).
+	_, err := b.blob(name).
 		Delete(ctx, "", azblob.BlobAccessConditions{})
 	if ne := normError(err); ne != nil && ne != bfs.ErrNotFound {
 		return ne
@@ -235,6 +235,11 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 
 // Close implements bfs.Bucket.
 func (*bucket) Close() error { return nil }
+
+// Close implements bfs.Bucket.
+func (b *bucket) blob(name string) azblob.BlockBlobURL {
+	return b.ctu.NewBlockBlobURL(b.withPrefix(name))
+}
 
 // --------------------------------------------------------------------
 
@@ -339,7 +344,7 @@ type iterator struct {
 	err  error
 	last bool // indicates last page
 	pos  int
-	page []azblob.BlobItem
+	page []azblob.BlobItemInternal
 }
 
 func (i *iterator) Close() error {
@@ -397,7 +402,7 @@ func (i *iterator) fetchNextPage() error {
 	i.page = i.page[:0]
 	i.pos = -1
 
-	resp, err := i.parent.ListBlobsFlatSegment(i.ctx, i.marker, azblob.ListBlobsSegmentOptions{
+	resp, err := i.parent.ctu.ListBlobsFlatSegment(i.ctx, i.marker, azblob.ListBlobsSegmentOptions{
 		Prefix: i.parent.config.Prefix,
 	})
 	if err != nil {
