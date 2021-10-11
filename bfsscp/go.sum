@@ -1,11 +1,9 @@
 github.com/bmatcuk/doublestar/v3 v3.0.0 h1:TQtVPlDnAYwcrVNB2JiGuMc++H5qzWZd9PhkNo5WyHI=
 github.com/bmatcuk/doublestar/v3 v3.0.0/go.mod h1:6PcTVMw80pCY1RVuoqu3V++99uQB3vsSYKPTd8AWA0k=
-github.com/bsm/bfs v0.11.4 h1:0Xf8ucY5M/Jc2kKUxw0HPK4+hTOoriSVjZhCAUi8/XY=
-github.com/bsm/bfs v0.11.4/go.mod h1:sUhBrbc9g0XThRRrT9hiinMhhKbkKIdhLkFljk4fuzM=
-github.com/bsm/ginkgo v1.16.0/go.mod h1:RabIZLzOCPghgHJKUqHZpqrQETA5AnF4aCSIYy5C1bk=
+github.com/bsm/bfs v0.11.5 h1:NMWD0hOp/74boNd51Zas4DMh81mvp1As1SjEZrFWHi0=
+github.com/bsm/bfs v0.11.5/go.mod h1:D2N+ly23VsODKiRvkf4HUgKSgOaNjKTOJE53rhL6Vfk=
 github.com/bsm/ginkgo v1.16.4 h1:pkHpo2VJRvI0NGlxCYi8qovww76L7+g82MgM+UBvH4A=
 github.com/bsm/ginkgo v1.16.4/go.mod h1:RabIZLzOCPghgHJKUqHZpqrQETA5AnF4aCSIYy5C1bk=
-github.com/bsm/gomega v1.11.0/go.mod h1:JifAceMQ4crZIWYUKrlGcmbN3bqHogVTADMD2ATsbwk=
 github.com/bsm/gomega v1.16.0 h1:LEoRGHyYl3MqAcXgczKX/C3bxlxjl3gjP37PGvPNplw=
 github.com/bsm/gomega v1.16.0/go.mod h1:JifAceMQ4crZIWYUKrlGcmbN3bqHogVTADMD2ATsbwk=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
