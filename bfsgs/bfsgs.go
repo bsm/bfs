@@ -69,7 +69,7 @@ type Config struct {
 }
 
 func (c *Config) norm() error {
-	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
+	c.Prefix = strings.TrimLeft(c.Prefix, "/")
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
 	}
@@ -104,19 +104,17 @@ func New(ctx context.Context, name string, cfg *Config) (bfs.Bucket, error) {
 }
 
 func (b *bucket) stripPrefix(name string) string {
-	if b.config.Prefix == "" {
-		return name
+	if b.config.Prefix != "" {
+		name = strings.TrimPrefix(name, b.config.Prefix)
 	}
-	name = strings.TrimPrefix(name, b.config.Prefix)
-	name = strings.TrimPrefix(name, "/")
-	return name
+	return strings.TrimLeft(name, "/")
 }
 
 func (b *bucket) withPrefix(name string) string {
-	if b.config.Prefix == "" {
-		return name
+	if b.config.Prefix != "" {
+		name = internal.WithinNamespace(b.config.Prefix, name)
 	}
-	return internal.WithinNamespace(b.config.Prefix, name)
+	return strings.TrimLeft(name, "/")
 }
 
 // Glob implements bfs.Bucket.
