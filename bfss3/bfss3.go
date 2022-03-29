@@ -387,7 +387,7 @@ func (r *response) Read(p []byte) (n int, err error) {
 		p = p[:r.ContentLength]
 	}
 	n, err = r.ReadCloser.Read(p)
-	if err == io.EOF && n > 0 && int64(n) == r.ContentLength {
+	if errors.Is(err, io.EOF) && n > 0 && int64(n) == r.ContentLength {
 		err = nil
 	}
 	r.ContentLength -= int64(n)

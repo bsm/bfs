@@ -23,6 +23,7 @@ package bfsftp
 
 import (
 	"context"
+	"errors"
 	"io/ioutil"
 	"net/textproto"
 	"net/url"
@@ -68,12 +69,11 @@ type Config struct {
 	TempDir string
 }
 
-func (c *Config) norm() error {
+func (c *Config) norm() {
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
 	}
-	return nil
 }
 
 type bucket struct {
@@ -87,9 +87,7 @@ func Connect(ctx context.Context, address string, cfg *Config) (bfs.Bucket, erro
 	if cfg != nil {
 		*config = *cfg
 	}
-	if err := config.norm(); err != nil {
-		return nil, err
-	}
+	config.norm()
 
 	conn, err := ftp.Dial(address, ftp.DialWithContext(ctx))
 	if err != nil {
@@ -191,7 +189,7 @@ func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions
 // Remove implements bfs.Bucket.
 func (b *bucket) Remove(_ context.Context, name string) error {
 	err := normError(b.conn.Delete(b.withPrefix(name)))
-	if err != nil && err != bfs.ErrNotFound {
+	if err != nil && !errors.Is(err, bfs.ErrNotFound) {
 		return err
 	}
 	return nil
@@ -204,7 +202,7 @@ func (b *bucket) Close() error {
 
 func (b *bucket) mkdir(dir string) error {
 	err := normError(b.conn.MakeDir(dir))
-	if err != nil && err != bfs.ErrNotFound {
+	if err != nil && !errors.Is(err, bfs.ErrNotFound) {
 		return err
 	}
 	return nil
@@ -225,12 +223,12 @@ func (b *bucket) mkdirAll(dir string) error {
 	return b.mkdir(dir)
 }
 
-func (b *bucket) globDir(ctx context.Context, pattern string, dir string, subdirs []string) ([]*ftp.Entry, []string, error) {
+func (b *bucket) globDir(_ context.Context, pattern string, dir string, subdirs []string) ([]*ftp.Entry, []string, error) {
 	dir = strings.TrimRight(dir, "/")
 
 	// get entries
 	entries, err := b.conn.List(b.withPrefix(dir))
-	if err != nil && normError(err) != bfs.ErrNotFound {
+	if err != nil && !errors.Is(normError(err), bfs.ErrNotFound) {
 		return nil, subdirs, err
 	}
 
@@ -259,9 +257,8 @@ func normError(err error) error {
 		return nil
 	}
 
-	switch err := err.(type) {
-	case *textproto.Error:
-		if err.Code == ftp.StatusFileUnavailable {
+	if tpErr := new(textproto.Error); errors.As(err, &tpErr) {
+		if tpErr.Code == ftp.StatusFileUnavailable {
 			return bfs.ErrNotFound
 		}
 	}

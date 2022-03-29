@@ -23,6 +23,7 @@ package bfsscp
 
 import (
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -71,7 +72,7 @@ type Config struct {
 	TempDir string
 }
 
-func (c *Config) norm() error {
+func (c *Config) norm() {
 	// If prefix indicates starting in the user's dir, trim
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/~/")
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/./")
@@ -80,7 +81,6 @@ func (c *Config) norm() error {
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
 	}
-	return nil
 }
 
 type bucket struct {
@@ -95,9 +95,7 @@ func New(address string, cfg *Config) (bfs.Bucket, error) {
 	if cfg != nil {
 		*config = *cfg
 	}
-	if err := config.norm(); err != nil {
-		return nil, err
-	}
+	config.norm()
 
 	sshConfig := &ssh.ClientConfig{
 		User: cfg.Username,
@@ -208,7 +206,7 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 	}
 
 	err := normError(b.client.Remove(b.withPrefix(name)))
-	if err != nil && err != bfs.ErrNotFound {
+	if err != nil && !errors.Is(err, bfs.ErrNotFound) {
 		return err
 	}
 	return nil
@@ -431,11 +429,10 @@ func (it *matchesIterator) Next() bool {
 // --------------------------------------------------------
 
 func normError(err error) error {
-	switch err {
-	case os.ErrNotExist:
-		return bfs.ErrNotFound
-	case nil:
+	if err == nil {
 		return nil
+	} else if errors.Is(err, os.ErrNotExist) {
+		return bfs.ErrNotFound
 	}
 	return err
 }

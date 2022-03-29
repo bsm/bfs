@@ -90,13 +90,11 @@ type Config struct {
 	Credential azblob.Credential
 }
 
-func (c *Config) norm() error {
+func (c *Config) norm() {
 	c.Prefix = strings.TrimPrefix(c.Prefix, "/")
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
 	}
-
-	return nil
 }
 
 type bucket struct {
@@ -110,9 +108,7 @@ func New(containerURL string, cfg *Config) (bfs.Bucket, error) {
 	if cfg != nil {
 		*config = *cfg
 	}
-	if err := config.norm(); err != nil {
-		return nil, err
-	}
+	config.norm()
 
 	// parse URL
 	u, err := url.Parse(containerURL)
@@ -227,7 +223,7 @@ func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions
 func (b *bucket) Remove(ctx context.Context, name string) error {
 	_, err := b.blob(name).
 		Delete(ctx, "", azblob.BlobAccessConditions{})
-	if ne := normError(err); ne != nil && ne != bfs.ErrNotFound {
+	if ne := normError(err); ne != nil && !errors.Is(ne, bfs.ErrNotFound) {
 		return ne
 	}
 	return nil
@@ -437,7 +433,7 @@ func (r *reader) Read(p []byte) (n int, err error) {
 		p = p[:r.ContentLength]
 	}
 	n, err = r.ReadCloser.Read(p)
-	if err == io.EOF && n > 0 && int64(n) == r.ContentLength {
+	if errors.Is(err, io.EOF) && n > 0 && int64(n) == r.ContentLength {
 		err = nil
 	}
 	r.ContentLength -= int64(n)

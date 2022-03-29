@@ -1,3 +1,10 @@
+run:
+  go: "1.17"
+linters:
+  enable:
+    - errorlint
+    - unparam
 linters-settings:
   errcheck:
-    ignore: "fmt:.*,Discard"
+    exclude-functions:
+      - (github.com/bsm/bfs.Writer).Discard

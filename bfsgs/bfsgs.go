@@ -68,13 +68,11 @@ type Config struct {
 	PredefinedACL string                // an optional predefined ACL string, e.g. "publicRead"
 }
 
-func (c *Config) norm() error {
+func (c *Config) norm() {
 	c.Prefix = strings.TrimLeft(c.Prefix, "/")
 	if c.Prefix != "" && !strings.HasSuffix(c.Prefix, "/") {
 		c.Prefix = c.Prefix + "/"
 	}
-
-	return nil
 }
 
 type bucket struct {
@@ -88,9 +86,7 @@ func New(ctx context.Context, name string, cfg *Config) (bfs.Bucket, error) {
 	if cfg != nil {
 		*config = *cfg
 	}
-	if err := config.norm(); err != nil {
-		return nil, err
-	}
+	config.norm()
 
 	client, err := storage.NewClient(ctx, config.Options...)
 	if err != nil {
@@ -174,7 +170,7 @@ func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions
 func (b *bucket) Remove(ctx context.Context, name string) error {
 	obj := b.bucket.Object(b.withPrefix(name))
 	err := obj.Delete(ctx)
-	if err == storage.ErrObjectNotExist {
+	if errors.Is(err, storage.ErrObjectNotExist) {
 		return nil
 	}
 	return err
@@ -194,7 +190,7 @@ func (*bucket) Close() error { return nil }
 // --------------------------------------------------------------------
 
 func normError(err error) error {
-	if err == storage.ErrObjectNotExist {
+	if errors.Is(err, storage.ErrObjectNotExist) {
 		return bfs.ErrNotFound
 	}
 	return err
@@ -279,7 +275,7 @@ func (i *iterator) Next() bool {
 }
 
 func (i *iterator) Error() error {
-	if i.err != giterator.Done {
+	if errors.Is(i.err, giterator.Done) {
 		return i.err
 	}
 	return nil

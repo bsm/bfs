@@ -2,6 +2,7 @@ package bfsscp_test
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -84,7 +85,7 @@ func sandboxCheck() error {
 	}
 	defer b.Close()
 
-	if _, err := b.Head(ctx, "____"); err != bfs.ErrNotFound {
+	if _, err := b.Head(ctx, "____"); !errors.Is(err, bfs.ErrNotFound) {
 		return err
 	}
 	return nil
