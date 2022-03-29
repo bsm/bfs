@@ -276,7 +276,7 @@ func (i *iterator) Next() bool {
 
 func (i *iterator) Error() error {
 	if errors.Is(i.err, giterator.Done) {
-		return i.err
+		return nil
 	}
-	return nil
+	return i.err
 }
