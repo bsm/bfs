@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/bsm/bfs"
-	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/ginkgo/v2"
 	. "github.com/bsm/gomega"
 )
 
@@ -19,11 +19,11 @@ var _ = Describe("Object", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("should have a name", func() {
+	It("has a name", func() {
 		Expect(subject.Name()).To(Equal("path/to/file.txt"))
 	})
 
-	It("should head/read/write", func() {
+	It("accepts head/read/write", func() {
 		_, err := subject.Head(ctx)
 		Expect(err).To(Equal(bfs.ErrNotFound))
 

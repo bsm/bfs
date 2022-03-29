@@ -9,7 +9,7 @@ import (
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/bfsscp"
 	"github.com/bsm/bfs/testdata/lint"
-	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/ginkgo/v2"
 	. "github.com/bsm/gomega"
 )
 
@@ -31,13 +31,13 @@ var _ = Describe("Bucket", func() {
 		}
 	})
 
-	It("should register scp scheme", func() {
+	It("registers scp scheme", func() {
 		subject, err := bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/~/prefix?tmpdir=test")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(subject.Close()).To(Succeed())
 	})
 
-	It("should allow for absolute and relative paths", func() {
+	It("allows for absolute and relative paths", func() {
 		subject, err := bfs.Connect(ctx, "scp://root:root@127.0.0.1:7022/~/prefix")
 		Expect(err).NotTo(HaveOccurred())
 

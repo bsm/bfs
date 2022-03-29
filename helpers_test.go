@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/bsm/bfs"
-	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/ginkgo/v2"
 	. "github.com/bsm/gomega"
 )
 
@@ -16,7 +16,7 @@ var _ = Describe("Helpers", func() {
 		bucket = bfs.NewInMem()
 	})
 
-	It("should write objects", func() {
+	It("writes objects", func() {
 		err := bfs.WriteObject(ctx, bucket, "path/to/file", []byte("testdata"), nil)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -24,7 +24,7 @@ var _ = Describe("Helpers", func() {
 			To(HaveKeyWithValue("path/to/file", int64(8)))
 	})
 
-	It("should copy objects", func() {
+	It("copies objects", func() {
 		err := bfs.WriteObject(ctx, bucket, "src.txt", []byte("testdata"), nil)
 		Expect(err).NotTo(HaveOccurred())
 

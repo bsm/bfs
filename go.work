@@ -1,0 +1,10 @@
+go 1.18
+
+use (
+	.
+	./bfsaz
+	./bfsftp
+	./bfsgs
+	./bfss3
+	./bfsscp
+)

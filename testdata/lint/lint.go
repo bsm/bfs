@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bsm/bfs"
-	"github.com/bsm/ginkgo"
+	"github.com/bsm/ginkgo/v2"
 	Ω "github.com/bsm/gomega"
 )
 
@@ -31,7 +31,7 @@ func Lint(opts *Options) func() {
 			readonly = opts.Readonly
 		})
 
-		ginkgo.It("should write", func() {
+		ginkgo.It("writes", func() {
 			blank, err := subject.Create(ctx, "blank.txt", nil)
 			Ω.Expect(err).NotTo(Ω.HaveOccurred())
 			defer blank.Discard()
@@ -42,7 +42,7 @@ func Lint(opts *Options) func() {
 			Ω.Expect(blank.Discard()).NotTo(Ω.Succeed())
 		})
 
-		ginkgo.It("should abort write if discarded", func() {
+		ginkgo.It("aborts write if discarded", func() {
 			blank, err := subject.Create(ctx, "blank.txt", nil)
 			Ω.Expect(err).NotTo(Ω.HaveOccurred())
 			defer blank.Discard()
@@ -53,7 +53,7 @@ func Lint(opts *Options) func() {
 			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
 		})
 
-		ginkgo.It("should abort write if context is cancelled", func() {
+		ginkgo.It("aborts write if context is cancelled", func() {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
@@ -71,7 +71,7 @@ func Lint(opts *Options) func() {
 			Ω.Expect(blank.Discard()).NotTo(Ω.Succeed())
 		})
 
-		ginkgo.It("should glob lots of files", func() {
+		ginkgo.It("globs many files", func() {
 			if readonly == nil {
 				ginkgo.Skip("test is disabled")
 			}
@@ -79,7 +79,7 @@ func Lint(opts *Options) func() {
 			Ω.Expect(readonly.Glob(ctx, "**")).To(whenDrained(Ω.HaveLen(numReadonlySamples)))
 		})
 
-		ginkgo.It("should glob", func() {
+		ginkgo.It("globs", func() {
 			Ω.Expect(writeTestData(subject, "path/a/first.txt")).To(Ω.Succeed())
 			Ω.Expect(writeTestData(subject, "path/b/second.txt")).To(Ω.Succeed())
 			Ω.Expect(writeTestData(subject, "path/a/third.json")).To(Ω.Succeed())
@@ -96,7 +96,7 @@ func Lint(opts *Options) func() {
 			Ω.Expect(subject.Glob(ctx, "**")).To(whenDrained(Ω.HaveLen(3)))
 		})
 
-		ginkgo.It("should head", func() {
+		ginkgo.It("heads", func() {
 			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
 
 			_, err := subject.Head(ctx, "path/to/missing")
@@ -118,7 +118,7 @@ func Lint(opts *Options) func() {
 			}
 		})
 
-		ginkgo.It("should read", func() {
+		ginkgo.It("reads", func() {
 			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
 
 			_, err := subject.Open(ctx, "path/to/missing")
@@ -133,7 +133,7 @@ func Lint(opts *Options) func() {
 			Ω.Expect(obj.Close()).To(Ω.Succeed())
 		})
 
-		ginkgo.It("should remove", func() {
+		ginkgo.It("removes", func() {
 			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
 
 			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(1)))
@@ -143,7 +143,7 @@ func Lint(opts *Options) func() {
 			Ω.Expect(subject.Remove(ctx, "missing")).To(Ω.Succeed())
 		})
 
-		ginkgo.It("should copy", func() {
+		ginkgo.It("copies", func() {
 			copier, ok := subject.(interface {
 				Copy(context.Context, string, string) error
 			})
