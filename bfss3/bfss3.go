@@ -83,6 +83,14 @@ func init() {
 		if s := query.Get("region"); s != "" {
 			opts = append(opts, config.WithRegion(s))
 		}
+		if s := query.Get("endpoint"); s != "" {
+			opts = append(opts, config.WithEndpointResolver(aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
+				return aws.Endpoint{
+					URL:               s,
+					HostnameImmutable: true,
+				}, nil
+			})))
+		}
 		if s := query.Get("max_retries"); s != "" {
 			maxRetries, err := strconv.ParseInt(s, 10, 64)
 			if err != nil {
