@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.16.x, 1.17.x]
+        go-version: [1.17.x, 1.18.x]
+        package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
     services:
       ftp_server:
         image: delfer/alpine-ftp-server
@@ -25,30 +26,32 @@ jobs:
         ports:
           - 7022:22
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Cache dependencies
-        uses: actions/cache@v2
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: Setup Go
-        uses: actions/setup-go@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@master
+          cache: true
+      - if: ${{ matrix.package == 'bfsgs' }}
+        uses: "google-github-actions/auth@v0"
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
-      - name: Configure AWS Credentials
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+      - if: ${{ matrix.package == 'bfss3' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-      - name: Run tests
-        run: make test
+      - run: go test ./...
+        working-directory: ${{ matrix.package }}
+
+  golangci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: ${{ matrix.package }}

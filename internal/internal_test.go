@@ -4,8 +4,7 @@ import (
 	"testing"
 
 	"github.com/bsm/bfs/internal"
-	. "github.com/bsm/ginkgo"
-	. "github.com/bsm/ginkgo/extensions/table"
+	. "github.com/bsm/ginkgo/v2"
 	. "github.com/bsm/gomega"
 )
 
