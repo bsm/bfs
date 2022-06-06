@@ -10,8 +10,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.26.10
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.6
 	github.com/bmatcuk/doublestar/v3 v3.0.0
-	github.com/bsm/bfs v0.11.5
-	github.com/bsm/ginkgo v1.16.4
+	github.com/bsm/bfs v0.11.6
+	github.com/bsm/ginkgo/v2 v2.1.3
 	github.com/bsm/gomega v1.16.0
 )
 
