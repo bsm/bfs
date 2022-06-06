@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.6
 	github.com/bmatcuk/doublestar/v3 v3.0.0
 	github.com/bsm/bfs v0.11.5
-	github.com/bsm/ginkgo/v2 v2.1.3
+	github.com/bsm/ginkgo v1.16.4
 	github.com/bsm/gomega v1.16.0
 )
 
@@ -28,6 +28,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.7 // indirect
 	github.com/aws/smithy-go v1.11.2 // indirect
-	github.com/bsm/ginkgo v1.16.4 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )
