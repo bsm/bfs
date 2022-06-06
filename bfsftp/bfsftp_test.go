@@ -9,7 +9,7 @@ import (
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/bfsftp"
 	"github.com/bsm/bfs/testdata/lint"
-	. "github.com/bsm/ginkgo"
+	. "github.com/bsm/ginkgo/v2"
 	. "github.com/bsm/gomega"
 )
 
