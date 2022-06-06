@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/bsm/bfs"
-	"github.com/bsm/ginkgo"
+	"github.com/bsm/ginkgo/v2"
 	Ω "github.com/bsm/gomega"
 )
 

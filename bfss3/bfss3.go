@@ -161,7 +161,7 @@ type bucket struct {
 // New initiates an bfs.Bucket backed by S3.
 func New(ctx context.Context, name string, c *Config) (bfs.Bucket, error) {
 	cfg := new(Config)
-	if cfg != nil {
+	if c != nil {
 		*cfg = *c
 	}
 	if err := cfg.norm(ctx); err != nil {
