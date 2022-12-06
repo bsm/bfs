@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.11.43
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.29.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.6
+	github.com/aws/smithy-go v1.13.5
 	github.com/bmatcuk/doublestar/v3 v3.0.0
 	github.com/bsm/bfs v0.11.6
 	github.com/bsm/ginkgo/v2 v2.1.3
@@ -28,6 +29,5 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.20 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.26 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.9 // indirect
-	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 )

@@ -31,7 +31,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -246,7 +245,7 @@ func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 
 // Create implements bfs.Bucket.
 func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
-	f, err := ioutil.TempFile("", "bfs-s3")
+	f, err := os.CreateTemp("", "bfs-s3")
 	if err != nil {
 		return nil, err
 	}
