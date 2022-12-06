@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.17.x, 1.18.x]
+        go-version: [1.18.x, 1.19.x]
         package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
     services:
       ftp_server:
@@ -51,6 +51,10 @@ jobs:
         package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.x
+          cache: true
       - uses: golangci/golangci-lint-action@v3
         with:
           version: latest
