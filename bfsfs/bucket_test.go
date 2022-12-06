@@ -1,7 +1,6 @@
 package bfsfs_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	"github.com/bsm/bfs/bfsfs"
@@ -18,7 +17,7 @@ var _ = Describe("Bucket", func() {
 	BeforeEach(func() {
 		var err error
 
-		dir, err = ioutil.TempDir("", "bfsfs")
+		dir, err = os.MkdirTemp("", "bfsfs")
 		Expect(err).NotTo(HaveOccurred())
 
 		subject, err := bfsfs.New(dir, "")

@@ -2,29 +2,27 @@
 //
 // When imported, it registers both `scp://` and `ssh://` global scheme resolver and can be used like:
 //
-//   import (
-//     "github.com/bsm/bfs"
+//	import (
+//	  "github.com/bsm/bfs"
 //
-//     _ "github.com/bsm/bfs/bfsscp"
-//   )
+//	  _ "github.com/bsm/bfs/bfsscp"
+//	)
 //
-//   func main() {
-//     ctx := context.Background()
-//     b, _ := bfs.Connect(ctx, "ssh://user:pass@hostname:22/path/to/root?tmpdir=%2Fcustom%2Ftmp")
-//     f, _ := b.Open(ctx, "file/within/root.txt")
-//     ...
-//   }
+//	func main() {
+//	  ctx := context.Background()
+//	  b, _ := bfs.Connect(ctx, "ssh://user:pass@hostname:22/path/to/root?tmpdir=%2Fcustom%2Ftmp")
+//	  f, _ := b.Open(ctx, "file/within/root.txt")
+//	  ...
+//	}
 //
 // bfs.Connect supports the following query parameters:
 //
-//   tmpdir - custom temp dir
-//
+//	tmpdir - custom temp dir
 package bfsscp
 
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -187,7 +185,7 @@ func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 
 // Create implements bfs.Bucket.
 func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
-	f, err := ioutil.TempFile(b.config.TempDir, "bfs-scp")
+	f, err := os.CreateTemp(b.config.TempDir, "bfs-scp")
 	if err != nil {
 		return nil, err
 	}

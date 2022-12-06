@@ -3,7 +3,7 @@ package bfs_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/bsm/bfs"
 )
@@ -40,7 +40,7 @@ func ExampleInMem() {
 	}
 	defer o2.Close()
 
-	data, err := ioutil.ReadAll(o2)
+	data, err := io.ReadAll(o2)
 	if err != nil {
 		panic(err)
 	}

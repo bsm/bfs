@@ -170,14 +170,14 @@ type Resolver func(context.Context, *url.URL) (Bucket, error)
 
 // Resolve opens a bucket from a URL. Example (from bfs/bfsfs):
 //
-//   bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
-//     return bfsfs.New(u.Path, "")
-//   })
+//	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+//	  return bfsfs.New(u.Path, "")
+//	})
 //
-//   u, err := url.Parse("file:///home/user/Documents")
-//   ...
-//   bucket, err := bfs.Resolve(context.TODO(), u)
-//   ...
+//	u, err := url.Parse("file:///home/user/Documents")
+//	...
+//	bucket, err := bfs.Resolve(context.TODO(), u)
+//	...
 func Resolve(ctx context.Context, u *url.URL) (Bucket, error) {
 	registryLock.Lock()
 	resv, ok := registry[u.Scheme]
@@ -191,11 +191,11 @@ func Resolve(ctx context.Context, u *url.URL) (Bucket, error) {
 
 // Connect connects to a bucket via URL. Example (from bfs/bfsfs):
 //
-//   bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
-//     return bfsfs.New(u.Path, "")
-//   })
+//	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+//	  return bfsfs.New(u.Path, "")
+//	})
 //
-//   bucket, err := bfs.Connect(context.TODO(), "file:///home/user/Documents")
+//	bucket, err := bfs.Connect(context.TODO(), "file:///home/user/Documents")
 func Connect(ctx context.Context, urlStr string) (Bucket, error) {
 	u, err := url.Parse(urlStr)
 	if err != nil {
@@ -207,12 +207,12 @@ func Connect(ctx context.Context, urlStr string) (Bucket, error) {
 // Register registers a new protocol with a scheme and a corresponding resolver.
 // Example (from bfs/bfsfs):
 //
-//   bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
-//     return bfsfs.New(u.Path, "")
-//   })
+//	bfs.Register("file", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+//	  return bfsfs.New(u.Path, "")
+//	})
 //
-//   bucket, err := bfs.Connect(context.TODO(), "file:///home/user/Documents")
-//   ...
+//	bucket, err := bfs.Connect(context.TODO(), "file:///home/user/Documents")
+//	...
 func Register(scheme string, resv Resolver) {
 	registryLock.Lock()
 	defer registryLock.Unlock()

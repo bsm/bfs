@@ -2,28 +2,26 @@
 //
 // When imported, it registers a global `ftp://` scheme resolver and can be used like:
 //
-//   import (
-//     "github.com/bsm/bfs"
+//	import (
+//	  "github.com/bsm/bfs"
 //
-//     _ "github.com/bsm/bfs/bfsftp"
-//   )
+//	  _ "github.com/bsm/bfs/bfsftp"
+//	)
 //
-//   func main() {
-//     ctx := context.Background()
-//     b, _ := bfs.Connect(ctx, "ftp://user:pass@hostname:21/path/to/root?tmpdir=%2Fcustom%2Ftmp")
-//     f, _ := b.Open(ctx, "file/within/root.txt")
-//     ...
-//   }
+//	func main() {
+//	  ctx := context.Background()
+//	  b, _ := bfs.Connect(ctx, "ftp://user:pass@hostname:21/path/to/root?tmpdir=%2Fcustom%2Ftmp")
+//	  f, _ := b.Open(ctx, "file/within/root.txt")
+//	  ...
+//	}
 //
 // bfs.Connect supports the following query parameters:
 //
-//   tmpdir - custom temp dir
-//
+//	tmpdir - custom temp dir
 package bfsftp
 
 import (
 	"context"
-	"io/ioutil"
 	"net/textproto"
 	"net/url"
 	"os"
@@ -174,7 +172,7 @@ func (b *bucket) Open(_ context.Context, name string) (bfs.Reader, error) {
 
 // Create implements bfs.Bucket.
 func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
-	f, err := ioutil.TempFile("", "bfs-ftp")
+	f, err := os.CreateTemp("", "bfs-ftp")
 	if err != nil {
 		return nil, err
 	}
