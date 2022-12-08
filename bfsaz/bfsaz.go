@@ -2,30 +2,28 @@
 //
 // When imported, it registers a global `az://` scheme resolver and can be used like:
 //
-//   import (
-//     "github.com/bsm/bfs"
+//	import (
+//	  "github.com/bsm/bfs"
 //
-//     _ "github.com/bsm/bfs/bfsaz"
-//   )
+//	  _ "github.com/bsm/bfs/bfsaz"
+//	)
 //
-//   func main() {
-//     ctx := context.Background()
-//     b, _ := bfs.Connect(ctx, "az://account.blob.core.windows.net/container?access_key=" + os.Getenv("AZURE_STORAGE_ACCESS_KEY"))
-//     f, _ := b.Open(ctx, "b/c.txt") // opens a blob for reading
-//     ...
-//   }
+//	func main() {
+//	  ctx := context.Background()
+//	  b, _ := bfs.Connect(ctx, "az://account.blob.core.windows.net/container?access_key=" + os.Getenv("AZURE_STORAGE_ACCESS_KEY"))
+//	  f, _ := b.Open(ctx, "b/c.txt") // opens a blob for reading
+//	  ...
+//	}
 //
 // bfs.Connect supports the following query parameters:
 //
-//   access_key - the Azure storage access key
-//
+//	access_key - the Azure storage access key
 package bfsaz
 
 import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -210,7 +208,7 @@ func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 
 // Create implements bfs.Bucket.
 func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
-	f, err := ioutil.TempFile("", "bfs-az")
+	f, err := os.CreateTemp("", "bfs-az")
 	if err != nil {
 		return nil, err
 	}

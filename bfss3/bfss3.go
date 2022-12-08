@@ -2,38 +2,35 @@
 //
 // When imported, it registers a global `s3://` scheme resolver and can be used like:
 //
-//   import (
-//     "github.com/bsm/bfs"
+//	import (
+//	  "github.com/bsm/bfs"
 //
-//     _ "github.com/bsm/bfs/bfss3"
-//   )
+//	  _ "github.com/bsm/bfs/bfss3"
+//	)
 //
-//   func main() {
-//     ctx := context.Background()
-//     b, _ := bfs.Connect(ctx, "s3://bucket/a&acl=MY_ACL")
-//     f, _ := b.Open(ctx, "b/c.txt") // opens s3://bucket/a/b/c.txt
-//     ...
-//   }
+//	func main() {
+//	  ctx := context.Background()
+//	  b, _ := bfs.Connect(ctx, "s3://bucket/a&acl=MY_ACL")
+//	  f, _ := b.Open(ctx, "b/c.txt") // opens s3://bucket/a/b/c.txt
+//	  ...
+//	}
 //
 // bfs.Connect supports the following query parameters:
 //
-//   aws_access_key_id      - custom AWS credentials
-//   aws_secret_access_key  - custom AWS credentials
-//   aws_session_token      - custom AWS credentials
-//   assume_role            - specify an AWS role ARN to assume
-//   region                 - specify an AWS region
-//   max_retries            - specify maximum number of retries
-//   acl                    - custom ACL, defaults to DefaultACL
-//   sse                    - server-side-encryption algorithm
-//
+//	aws_access_key_id      - custom AWS credentials
+//	aws_secret_access_key  - custom AWS credentials
+//	aws_session_token      - custom AWS credentials
+//	assume_role            - specify an AWS role ARN to assume
+//	region                 - specify an AWS region
+//	max_retries            - specify maximum number of retries
+//	acl                    - custom ACL, defaults to DefaultACL
+//	sse                    - server-side-encryption algorithm
 package bfss3
 
 import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
-	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -48,7 +45,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -56,6 +52,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go"
 )
 
 // DefaultACL is the default ACL setting.
@@ -248,7 +245,7 @@ func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 
 // Create implements bfs.Bucket.
 func (b *bucket) Create(ctx context.Context, name string, opts *bfs.WriteOptions) (bfs.Writer, error) {
-	f, err := ioutil.TempFile("", "bfs-s3")
+	f, err := os.CreateTemp("", "bfs-s3")
 	if err != nil {
 		return nil, err
 	}
@@ -353,16 +350,15 @@ func (w *writer) Commit() error {
 // -----------------------------------------------------------------------------
 
 func normError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	if e := new(awshttp.ResponseError); errors.As(err, &e) {
-		if e.HTTPStatusCode() == http.StatusNotFound {
-			return bfs.ErrNotFound
+	if err != nil {
+		var apiErr smithy.APIError
+		if errors.As(err, &apiErr) {
+			switch apiErr.ErrorCode() {
+			case "NotFound", "NoSuchKey", "NoSuchBucket":
+				return bfs.ErrNotFound
+			}
 		}
 	}
-
 	return err
 }
 

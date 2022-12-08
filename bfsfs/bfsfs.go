@@ -2,28 +2,26 @@
 //
 // When imported, it registers a global `file://` scheme resolver and can be used like:
 //
-//   import (
-//     "github.com/bsm/bfs"
+//	import (
+//	  "github.com/bsm/bfs"
 //
-//     _ "github.com/bsm/bfs/bfsfs"
-//   )
+//	  _ "github.com/bsm/bfs/bfsfs"
+//	)
 //
-//   func main() {
-//     ctx := context.Background()
-//     b, _ := bfs.Connect(ctx, "file:///path/to/root?tmpdir=%2Fcustom%2Ftmp")
-//     f, _ := b.Open(ctx, "file/within/root.txt")
-//     ...
-//   }
+//	func main() {
+//	  ctx := context.Background()
+//	  b, _ := bfs.Connect(ctx, "file:///path/to/root?tmpdir=%2Fcustom%2Ftmp")
+//	  f, _ := b.Open(ctx, "file/within/root.txt")
+//	  ...
+//	}
 //
 // bfs.Connect supports the following query parameters:
 //
-//   tmpdir - custom temp dir
-//
+//	tmpdir - custom temp dir
 package bfsfs
 
 import (
 	"context"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -65,7 +63,7 @@ type atomicFile struct {
 // openAtomicFile opens atomic file for writing.
 // tmpDir defaults to standard temporary dir if blank.
 func openAtomicFile(ctx context.Context, name string, tmpDir string) (*atomicFile, error) {
-	f, err := ioutil.TempFile(tmpDir, "bfsfs")
+	f, err := os.CreateTemp(tmpDir, "bfsfs")
 	if err != nil {
 		return nil, err
 	}

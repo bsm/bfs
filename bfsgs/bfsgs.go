@@ -2,24 +2,23 @@
 //
 // When imported, it registers a global `gs://` scheme resolver and can be used like:
 //
-//   import (
-//     "github.com/bsm/bfs"
+//	import (
+//	  "github.com/bsm/bfs"
 //
-//     _ "github.com/bsm/bfs/bfsgs"
-//   )
+//	  _ "github.com/bsm/bfs/bfsgs"
+//	)
 //
-//   func main() {
-//     ctx := context.Background()
-//     b, _ := bfs.Connect(ctx, "gs://bucket/a")
-//     f, _ := b.Open(ctx, "b/c.txt") // opens gs://bucket/a/b/c.txt
-//     ...
-//   }
+//	func main() {
+//	  ctx := context.Background()
+//	  b, _ := bfs.Connect(ctx, "gs://bucket/a")
+//	  f, _ := b.Open(ctx, "b/c.txt") // opens gs://bucket/a/b/c.txt
+//	  ...
+//	}
 //
 // bfs.Connect supports the following query parameters:
 //
-//   scopes      - custom scopes
-//   credentials - path to custom credentials file
-//
+//	scopes      - custom scopes
+//	credentials - path to custom credentials file
 package bfsgs
 
 import (

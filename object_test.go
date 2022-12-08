@@ -2,7 +2,7 @@ package bfs_test
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 
 	"github.com/bsm/bfs"
 	. "github.com/bsm/ginkgo/v2"
@@ -44,7 +44,7 @@ var _ = Describe("Object", func() {
 
 		r, err := subject.Open(ctx)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(ioutil.ReadAll(r)).To(Equal([]byte("TESTDATA")))
+		Expect(io.ReadAll(r)).To(Equal([]byte("TESTDATA")))
 		Expect(r.Close()).To(Succeed())
 
 		Expect(subject.Remove(ctx)).To(Succeed())
