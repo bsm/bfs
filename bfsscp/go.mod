@@ -8,12 +8,9 @@ require (
 	github.com/bsm/ginkgo/v2 v2.1.3
 	github.com/bsm/gomega v1.16.0
 	github.com/kr/fs v0.1.0
-	github.com/pkg/sftp v1.13.4
-	go.uber.org/multierr v1.8.0
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+	github.com/pkg/sftp v1.13.6
+	go.uber.org/multierr v1.11.0
+	golang.org/x/crypto v0.15.0
 )
 
-require (
-	go.uber.org/atomic v1.9.0 // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
-)
+require golang.org/x/sys v0.14.0 // indirect

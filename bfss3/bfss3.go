@@ -221,7 +221,7 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 
 	return &bfs.MetaInfo{
 		Name:        name,
-		Size:        resp.ContentLength,
+		Size:        aws.ToInt64(resp.ContentLength),
 		ModTime:     aws.ToTime(resp.LastModified),
 		ContentType: aws.ToString(resp.ContentType),
 		Metadata:    bfs.NormMetadata(resp.Metadata),
@@ -239,7 +239,7 @@ func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
 	}
 	return &response{
 		ReadCloser:    resp.Body,
-		ContentLength: resp.ContentLength,
+		ContentLength: aws.ToInt64(resp.ContentLength),
 	}, nil
 }
 
@@ -476,7 +476,7 @@ func (i *iterator) fetchNextPage() error {
 		} else if ok {
 			i.page = append(i.page, object{
 				key:     name,
-				size:    obj.Size,
+				size:    aws.ToInt64(obj.Size),
 				modTime: aws.ToTime(obj.LastModified),
 			})
 		}
