@@ -10,7 +10,7 @@ require (
 	github.com/kr/fs v0.1.0
 	github.com/pkg/sftp v1.13.6
 	go.uber.org/multierr v1.11.0
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.21.0
 )
 
-require golang.org/x/sys v0.15.0 // indirect
+require golang.org/x/sys v0.18.0 // indirect
