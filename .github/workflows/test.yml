@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.20.x, 1.21.x]
+        go-version: [1.21.x, 1.22.x]
         package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
     services:
       ftp_server:
@@ -26,17 +26,17 @@ jobs:
         ports:
           - 7022:22
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
           cache: true
       - if: ${{ matrix.package == 'bfsgs' }}
-        uses: "google-github-actions/auth@v1"
+        uses: "google-github-actions/auth@v2"
         with:
           credentials_json: "${{ secrets.GCP_SA_KEY }}"
       - if: ${{ matrix.package == 'bfss3' }}
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -50,12 +50,12 @@ jobs:
       matrix:
         package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.x
           cache: true
-      - uses: golangci/golangci-lint-action@v3
+      - uses: golangci/golangci-lint-action@v5
         with:
           version: latest
           working-directory: ${{ matrix.package }}
