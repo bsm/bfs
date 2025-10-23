@@ -2,6 +2,7 @@ package bfs_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/bsm/bfs"
@@ -15,10 +16,9 @@ func TestWriteObject(t *testing.T) {
 		t.Fatal("Unexpected error", err)
 	}
 
-	if omap := bucket.ObjectSizes(); len(omap) != 1 {
-		t.Errorf("Expected %#v to have 1 entry", omap)
-	} else if omap["path/to/file"] != 8 {
-		t.Errorf("Expected %#v to include %q: %d", omap, "path/to/file", 8)
+	exp := map[string]int64{"path/to/file": 8}
+	if got := bucket.ObjectSizes(); !reflect.DeepEqual(exp, got) {
+		t.Errorf("Expected %#v, got %#v", exp, got)
 	}
 }
 
@@ -33,11 +33,8 @@ func TestCopyObject(t *testing.T) {
 		t.Fatal("Unexpected error", err)
 	}
 
-	if omap := bucket.ObjectSizes(); len(omap) != 2 {
-		t.Errorf("Expected %#v to have 2 entries", omap)
-	} else if omap["src.txt"] != 8 {
-		t.Errorf("Expected %#v to include %q: %d", omap, "src.txt", 8)
-	} else if omap["dst.txt"] != 8 {
-		t.Errorf("Expected %#v to include %q: %d", omap, "dst.txt", 8)
+	exp := map[string]int64{"src.txt": 8, "dst.txt": 8}
+	if got := bucket.ObjectSizes(); !reflect.DeepEqual(exp, got) {
+		t.Errorf("Expected %#v, got %#v", exp, got)
 	}
 }
