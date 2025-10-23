@@ -1,3 +1,8 @@
-linters-settings:
-  errcheck:
-    ignore: "fmt:.*,Discard"
+version: "2"
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - (github.com/bsm/bfs.Reader).Close
+        - (github.com/bsm/bfs.Writer).Discard
+        - os.RemoveAll

@@ -23,11 +23,11 @@ func TestObject(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		if _, err := obj.Head(ctx); !errors.Is(bfs.ErrNotFound, err) {
+		if _, err := obj.Head(ctx); !errors.Is(err, bfs.ErrNotFound) {
 			t.Errorf("Expected %v, got %v", bfs.ErrNotFound, err)
 		}
 
-		if _, err := obj.Open(ctx); !errors.Is(bfs.ErrNotFound, err) {
+		if _, err := obj.Open(ctx); !errors.Is(err, bfs.ErrNotFound) {
 			t.Errorf("Expected %v, got %v", bfs.ErrNotFound, err)
 		}
 	})
@@ -77,7 +77,7 @@ func TestObject(t *testing.T) {
 			t.Fatal("Unexpected error", err)
 		}
 
-		if _, err := obj.Head(ctx); !errors.Is(bfs.ErrNotFound, err) {
+		if _, err := obj.Head(ctx); !errors.Is(err, bfs.ErrNotFound) {
 			t.Errorf("Expected %v, got %v", bfs.ErrNotFound, err)
 		}
 	})
