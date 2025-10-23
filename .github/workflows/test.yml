@@ -31,6 +31,23 @@ jobs:
       - uses: bsm/misc/.github/actions/test-go@main
         with:
           working-directory: bfsftp
+  scp-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: bsm/misc/.github/actions/lint-go@main
+        with:
+          working-directory: bfsscp
+  scp-test:
+    runs-on: ubuntu-latest
+    services:
+      ssh_server:
+        image: sickp/alpine-sshd:7.5-r2
+        ports:
+          - 7022:22
+    steps:
+      - uses: bsm/misc/.github/actions/test-go@main
+        with:
+          working-directory: bfsscp
   # gs:
   #   uses: bsm/misc/.github/workflows/test-go.yaml@main
   #   with:
