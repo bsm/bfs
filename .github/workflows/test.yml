@@ -7,55 +7,23 @@ on:
     branches:
       - main
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: [1.21.x, 1.22.x]
-        package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
-    services:
-      ftp_server:
-        image: delfer/alpine-ftp-server
-        ports:
-          - 7021:21
-          - 21000-21010:21000-21010
-        env:
-          USERS: "ftpuser|ftppass"
-      ssh_server:
-        image: sickp/alpine-sshd:7.5-r2
-        ports:
-          - 7022:22
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ matrix.go-version }}
-          cache: true
-      - if: ${{ matrix.package == 'bfsgs' }}
-        uses: "google-github-actions/auth@v2"
-        with:
-          credentials_json: "${{ secrets.GCP_SA_KEY }}"
-      - if: ${{ matrix.package == 'bfss3' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - run: go test ./...
-        working-directory: ${{ matrix.package }}
-
-  golangci:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package: [".", bfsaz, bfsftp, bfsgs, bfss3, bfsscp]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 1.x
-          cache: true
-      - uses: golangci/golangci-lint-action@v5
-        with:
-          version: latest
-          working-directory: ${{ matrix.package }}
+  main:
+    uses: bsm/misc/.github/workflows/test-go.yaml@main
+    with:
+      working-directory: .
+  # ftp:
+  #   uses: bsm/misc/.github/workflows/test-go.yaml@main
+  #   with:
+  #     working-directory: bfsftp
+  # gs:
+  #   uses: bsm/misc/.github/workflows/test-go.yaml@main
+  #   with:
+  #     working-directory: bfsgs
+  # s3:
+  #   uses: bsm/misc/.github/workflows/test-go.yaml@main
+  #   with:
+  #     working-directory: bfss3
+  # scp:
+  #   uses: bsm/misc/.github/workflows/test-go.yaml@main
+  #   with:
+  #     working-directory: bfsscp

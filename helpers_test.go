@@ -2,38 +2,42 @@ package bfs_test
 
 import (
 	"context"
+	"testing"
 
 	"github.com/bsm/bfs"
-	. "github.com/bsm/ginkgo/v2"
-	. "github.com/bsm/gomega"
 )
 
-var _ = Describe("Helpers", func() {
-	var bucket *bfs.InMem
-	var ctx = context.Background()
+func TestWriteObject(t *testing.T) {
+	ctx := context.Background()
+	bucket := bfs.NewInMem()
 
-	BeforeEach(func() {
-		bucket = bfs.NewInMem()
-	})
+	if err := bfs.WriteObject(ctx, bucket, "path/to/file", []byte("testdata"), nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
 
-	It("should write objects", func() {
-		err := bfs.WriteObject(ctx, bucket, "path/to/file", []byte("testdata"), nil)
-		Expect(err).NotTo(HaveOccurred())
+	if omap := bucket.ObjectSizes(); len(omap) != 1 {
+		t.Errorf("Expected %#v to have 1 entry", omap)
+	} else if omap["path/to/file"] != 8 {
+		t.Errorf("Expected %#v to include %q: %d", omap, "path/to/file", 8)
+	}
+}
 
-		Expect(bucket.ObjectSizes()).
-			To(HaveKeyWithValue("path/to/file", int64(8)))
-	})
+func TestCopyObject(t *testing.T) {
+	ctx := context.Background()
+	bucket := bfs.NewInMem()
 
-	It("should copy objects", func() {
-		err := bfs.WriteObject(ctx, bucket, "src.txt", []byte("testdata"), nil)
-		Expect(err).NotTo(HaveOccurred())
+	if err := bfs.WriteObject(ctx, bucket, "src.txt", []byte("testdata"), nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+	if err := bfs.CopyObject(ctx, bucket, "src.txt", "dst.txt", nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
 
-		err = bfs.CopyObject(ctx, bucket, "src.txt", "dst.txt", nil)
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(bucket.ObjectSizes()).
-			To(HaveKeyWithValue("src.txt", int64(8)))
-		Expect(bucket.ObjectSizes()).
-			To(HaveKeyWithValue("dst.txt", int64(8)))
-	})
-})
+	if omap := bucket.ObjectSizes(); len(omap) != 2 {
+		t.Errorf("Expected %#v to have 2 entries", omap)
+	} else if omap["src.txt"] != 8 {
+		t.Errorf("Expected %#v to include %q: %d", omap, "src.txt", 8)
+	} else if omap["dst.txt"] != 8 {
+		t.Errorf("Expected %#v to include %q: %d", omap, "dst.txt", 8)
+	}
+}

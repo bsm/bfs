@@ -4,26 +4,28 @@ import (
 	"testing"
 
 	"github.com/bsm/bfs/internal"
-	. "github.com/bsm/ginkgo/v2"
-	. "github.com/bsm/gomega"
 )
 
-var _ = DescribeTable("WithinNamespace",
-	func(name, expected string) {
-		Expect(internal.WithinNamespace("/my/root", name)).To(Equal(expected))
-	},
-	Entry("blank", "", "/my/root"),
-	Entry("relative", "file/name.txt", "/my/root/file/name.txt"),
-	Entry("absolute", "/file/name.txt", "/my/root/file/name.txt"),
-	Entry("dirty", "//file//name.txt", "/my/root/file/name.txt"),
-	Entry("with parent references", "/file/../name.txt", "/my/root/name.txt"),
-	Entry("escape attempts", "../file/secret.txt", "/my/root/file/secret.txt"),
-	Entry("clever escape attempts", "/file/../../../../secret.txt", "/my/root/secret.txt"),
-)
+func TestWithinNamespace(t *testing.T) {
+	examples := []struct {
+		Desc string
+		Name string
+		Exp  string
+	}{
+		{"blank", "", "/my/root"},
+		{"relative", "file/name.txt", "/my/root/file/name.txt"},
+		{"absolute", "/file/name.txt", "/my/root/file/name.txt"},
+		{"dirty", "//file//name.txt", "/my/root/file/name.txt"},
+		{"with parent references", "/file/../name.txt", "/my/root/name.txt"},
+		{"escape attempts", "../file/secret.txt", "/my/root/file/secret.txt"},
+		{"clever escape attempts", "/file/../../../../secret.txt", "/my/root/secret.txt"},
+	}
 
-// ------------------------------------------------------------------------
-
-func TestSuite(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "bfs/internal")
+	for _, example := range examples {
+		t.Run(example.Desc, func(t *testing.T) {
+			if got := internal.WithinNamespace("/my/root", example.Name); got != example.Exp {
+				t.Errorf("Expected %q, got %q", example.Exp, got)
+			}
+		})
+	}
 }
