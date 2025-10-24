@@ -9,5 +9,7 @@ import (
 
 func TestInMem(t *testing.T) {
 	bucket := bfs.NewInMem()
-	lint.Common(t, bucket, lint.Supports{Metadata: true})
+	support := lint.Supports{Metadata: true}
+	lint.Common(t, bucket, support)
+	lint.Slow(t, bucket, support)
 }
