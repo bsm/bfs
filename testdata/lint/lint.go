@@ -89,13 +89,17 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 	})
 
 	t.Run("heads", func(t *testing.T) {
-		writeTestData(t, bucket, "path/to/first.txt")
-		if _, err := bucket.Head(ctx, "path/to/missing"); !errors.Is(err, bfs.ErrNotFound) {
-			t.Fatalf("Expected %v, got %v", bfs.ErrNotFound, err)
-		}
+		// heading a missing file should fail
+		_, err := bucket.Head(ctx, "path/to/missing")
+		assertNotFound(t, err)
 
+		writeTestData(t, bucket, "path/to/first.txt")
 		info, err := bucket.Head(ctx, "path/to/first.txt")
 		assertNoError(t, err)
+
+		// heading a "dir" should fail
+		_, err = bucket.Head(ctx, "path/to")
+		assertNotFound(t, err)
 
 		if exp, got := "path/to/first.txt", info.Name; exp != got {
 			t.Errorf("Expected %v, got %v", exp, got)
@@ -124,14 +128,17 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 	})
 
 	t.Run("reads", func(t *testing.T) {
+		// opening a missing file should fail
+		_, err := bucket.Open(ctx, "path/to/missing")
+		assertNotFound(t, err)
+
 		writeTestData(t, bucket, "path/to/first.txt")
-
-		if _, err := bucket.Open(ctx, "path/to/missing"); !errors.Is(err, bfs.ErrNotFound) {
-			t.Fatalf("Expected %v, got %v", bfs.ErrNotFound, err)
-		}
-
 		obj, err := bucket.Open(ctx, "path/to/first.txt")
 		assertNoError(t, err)
+
+		// opening a "dir" should fail
+		_, err = bucket.Open(ctx, "path/to")
+		assertNotFound(t, err)
 
 		data := make([]byte, 100)
 		sz, err := obj.Read(data)
@@ -150,6 +157,9 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 
 	t.Run("removes", func(t *testing.T) {
 		writeTestData(t, bucket, "path/to/first.txt")
+		assertNumEntries(t, bucket, "**", 1)
+
+		assertNoError(t, bucket.Remove(ctx, "path/to"))
 		assertNumEntries(t, bucket, "**", 1)
 
 		assertNoError(t, bucket.Remove(ctx, "path/to/first.txt"))
@@ -199,6 +209,9 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 		writeTestData(t, bucket, "a/b/c.txt")
 		writeTestData(t, bucket, "d.txt")
 		writeTestData(t, bucket, "e/f.txt")
+		assertNumEntries(t, bucket, "**", 4)
+
+		assertNoError(t, remover.RemoveAll(ctx, "a"))
 		assertNumEntries(t, bucket, "**", 4)
 
 		assertNoError(t, remover.RemoveAll(ctx, "a/**"))
@@ -261,6 +274,14 @@ func assertError(t *testing.T, err error) {
 
 	if err == nil {
 		t.Fatal("Expected error, but got none")
+	}
+}
+
+func assertNotFound(t *testing.T, err error) {
+	t.Helper()
+
+	if err == nil || !errors.Is(err, bfs.ErrNotFound) {
+		t.Fatalf("Expected bfs.ErrNotFound, but got %v", err)
 	}
 }
 

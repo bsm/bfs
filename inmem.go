@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmatcuk/doublestar/v3"
+	"github.com/bmatcuk/doublestar/v4"
 )
 
 // InMem is an in-memory Bucket implementation which can be used for mocking.
