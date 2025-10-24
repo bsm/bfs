@@ -3,184 +3,253 @@ package lint
 import (
 	"context"
 	"errors"
+	"reflect"
+	"testing"
 	"time"
 
 	"github.com/bsm/bfs"
-	"github.com/bsm/ginkgo/v2"
-	Ω "github.com/bsm/gomega"
 )
 
-const numReadonlySamples = 2121
-
-// Options are passed to the lint test set
-type Options struct {
-	Subject, Readonly bfs.Bucket
-
-	Metadata    bool
+type Supports struct {
 	ContentType bool
+	Metadata    bool
 }
 
-// Lint implements a test set.
-func Lint(opts *Options) func() {
-	var subject, readonly bfs.Bucket
-	var ctx = context.Background()
+func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
+	ctx := context.Background()
 
-	return func() {
-		ginkgo.BeforeEach(func() {
-			subject = opts.Subject
-			readonly = opts.Readonly
-		})
+	t.Run("writes", func(t *testing.T) {
+		w, err := bucket.Create(ctx, "blank.txt", nil)
+		if err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+		defer w.Discard()
 
-		ginkgo.It("should write", func() {
-			blank, err := subject.Create(ctx, "blank.txt", nil)
-			Ω.Expect(err).NotTo(Ω.HaveOccurred())
-			defer blank.Discard()
+		assertNoError(t, w.Commit())
 
-			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
-			Ω.Expect(blank.Commit()).To(Ω.Succeed())
-			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.ConsistOf("blank.txt")))
-			Ω.Expect(blank.Discard()).NotTo(Ω.Succeed())
-		})
+		if exp, got := []string{"blank.txt"}, glob(t, bucket, "*"); !reflect.DeepEqual(exp, got) {
+			t.Errorf("Expected %v, got %v", exp, got)
+		}
 
-		ginkgo.It("should abort write if discarded", func() {
-			blank, err := subject.Create(ctx, "blank.txt", nil)
-			Ω.Expect(err).NotTo(Ω.HaveOccurred())
-			defer blank.Discard()
+		assertError(t, w.Discard())
+		assertNoError(t, bucket.Remove(ctx, "blank.txt"))
+	})
 
-			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
-			Ω.Expect(blank.Discard()).To(Ω.Succeed())
-			Ω.Expect(blank.Commit()).NotTo(Ω.Succeed())
-			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
-		})
+	t.Run("aborts writes on discard", func(t *testing.T) {
+		w, err := bucket.Create(ctx, "blank.txt", nil)
+		assertNoError(t, err)
+		defer w.Discard()
 
-		ginkgo.It("should abort write if context is cancelled", func() {
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
+		assertNumEntries(t, bucket, "*", 0)
 
-			blank, err := subject.Create(ctx, "blank.txt", nil)
-			Ω.Expect(err).NotTo(Ω.HaveOccurred())
-			defer blank.Discard()
+		assertNoError(t, w.Discard())
+		assertError(t, w.Commit())
+		assertNumEntries(t, bucket, "*", 0)
+	})
 
-			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
-			cancel()
+	t.Run("aborts writes if context is cancelled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-			commitErr := blank.Commit()
-			Ω.Expect(errors.Is(commitErr, context.Canceled)).To(Ω.BeTrue())
+		w, err := bucket.Create(ctx, "blank.txt", nil)
+		assertNoError(t, err)
+		defer w.Discard()
 
-			Ω.Expect(subject.Glob(ctx, "*")).To(whenDrained(Ω.BeEmpty()))
-			Ω.Expect(blank.Discard()).NotTo(Ω.Succeed())
-		})
+		assertNumEntries(t, bucket, "*", 0)
+		cancel()
 
-		ginkgo.It("should glob lots of files", func() {
-			if readonly == nil {
-				ginkgo.Skip("test is disabled")
+		if exp, got := context.Canceled, w.Commit(); !errors.Is(got, exp) {
+			t.Errorf("Expected %v, got %v", exp, got)
+		}
+
+		assertNumEntries(t, bucket, "*", 0)
+		assertError(t, w.Discard())
+	})
+
+	t.Run("globs", func(t *testing.T) {
+		writeTestData(t, bucket, "path/a/first.txt")
+		writeTestData(t, bucket, "path/b/second.txt")
+		writeTestData(t, bucket, "path/a/third.json")
+
+		assertNumEntries(t, bucket, "*", 0)
+		assertNumEntries(t, bucket, "", 0)
+		assertNumEntries(t, bucket, "path/*", 0)
+		assertNumEntries(t, bucket, "path/*/*", 3)
+		assertNumEntries(t, bucket, "*/*/*", 3)
+		assertNumEntries(t, bucket, "*/a/*", 2)
+		assertNumEntries(t, bucket, "*/b/*", 1)
+		assertNumEntries(t, bucket, "path/*/*.txt", 2)
+		assertNumEntries(t, bucket, "path/*/[ft]*", 2)
+		assertNumEntries(t, bucket, "path/*/[ft]*.json", 1)
+		assertNumEntries(t, bucket, "**", 3)
+
+		assertNoError(t, bucket.Remove(ctx, "path/a/first.txt"))
+		assertNoError(t, bucket.Remove(ctx, "path/b/second.txt"))
+		assertNoError(t, bucket.Remove(ctx, "path/a/third.json"))
+	})
+
+	t.Run("heads", func(t *testing.T) {
+		writeTestData(t, bucket, "path/to/first.txt")
+		if _, err := bucket.Head(ctx, "path/to/missing"); !errors.Is(err, bfs.ErrNotFound) {
+			t.Fatalf("Expected %v, got %v", bfs.ErrNotFound, err)
+		}
+
+		info, err := bucket.Head(ctx, "path/to/first.txt")
+		assertNoError(t, err)
+
+		if exp, got := "path/to/first.txt", info.Name; exp != got {
+			t.Errorf("Expected %v, got %v", exp, got)
+		}
+		if exp, got := int64(8), info.Size; exp != got {
+			t.Errorf("Expected %v, got %v", exp, got)
+		}
+		if exp, got := time.Now(), info.ModTime; exp.Sub(got) > time.Minute {
+			t.Errorf("Expected %v (±1m), got %v", exp, got)
+		}
+
+		if supports.Metadata {
+			meta := bfs.Metadata{"Cust0m-Key": "VaLu3"}
+			if exp, got := meta, info.Metadata; !reflect.DeepEqual(exp, got) {
+				t.Errorf("Expected %v, got %v", exp, got)
 			}
-			Ω.Expect(readonly.Glob(ctx, "*/*")).To(whenDrained(Ω.HaveLen(numReadonlySamples)))
-			Ω.Expect(readonly.Glob(ctx, "**")).To(whenDrained(Ω.HaveLen(numReadonlySamples)))
-		})
+		}
 
-		ginkgo.It("should glob", func() {
-			Ω.Expect(writeTestData(subject, "path/a/first.txt")).To(Ω.Succeed())
-			Ω.Expect(writeTestData(subject, "path/b/second.txt")).To(Ω.Succeed())
-			Ω.Expect(writeTestData(subject, "path/a/third.json")).To(Ω.Succeed())
-
-			Ω.Expect(subject.Glob(ctx, "")).To(whenDrained(Ω.BeEmpty()))
-			Ω.Expect(subject.Glob(ctx, "path/*")).To(whenDrained(Ω.BeEmpty()))
-			Ω.Expect(subject.Glob(ctx, "path/*/*")).To(whenDrained(Ω.HaveLen(3)))
-			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(3)))
-			Ω.Expect(subject.Glob(ctx, "*/a/*")).To(whenDrained(Ω.HaveLen(2)))
-			Ω.Expect(subject.Glob(ctx, "*/b/*")).To(whenDrained(Ω.HaveLen(1)))
-			Ω.Expect(subject.Glob(ctx, "path/*/*.txt")).To(whenDrained(Ω.HaveLen(2)))
-			Ω.Expect(subject.Glob(ctx, "path/*/[ft]*")).To(whenDrained(Ω.HaveLen(2)))
-			Ω.Expect(subject.Glob(ctx, "path/*/[ft]*.json")).To(whenDrained(Ω.HaveLen(1)))
-			Ω.Expect(subject.Glob(ctx, "**")).To(whenDrained(Ω.HaveLen(3)))
-		})
-
-		ginkgo.It("should head", func() {
-			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
-
-			_, err := subject.Head(ctx, "path/to/missing")
-			Ω.Expect(err).To(Ω.Equal(bfs.ErrNotFound))
-
-			info, err := subject.Head(ctx, "path/to/first.txt")
-			Ω.Expect(err).NotTo(Ω.HaveOccurred())
-			Ω.Expect(info.Name).To(Ω.Equal("path/to/first.txt"))
-			Ω.Expect(info.Size).To(Ω.Equal(int64(8)))
-			Ω.Expect(info.ModTime).To(Ω.BeTemporally("~", time.Now(), time.Minute))
-
-			if opts.Metadata {
-				Ω.Expect(info.Metadata).To(Ω.Equal(bfs.Metadata{
-					"Cust0m-Key": "VaLu3",
-				}))
+		if supports.ContentType {
+			if exp, got := "path/to/first.txt", info.ContentType; exp != got {
+				t.Errorf("Expected %v, got %v", exp, got)
 			}
-			if opts.ContentType {
-				Ω.Expect(info.ContentType).To(Ω.Equal("text/plain"))
-			}
+		}
+
+		assertNoError(t, bucket.Remove(ctx, "path/to/first.txt"))
+	})
+
+	t.Run("reads", func(t *testing.T) {
+		writeTestData(t, bucket, "path/to/first.txt")
+
+		if _, err := bucket.Open(ctx, "path/to/missing"); !errors.Is(err, bfs.ErrNotFound) {
+			t.Fatalf("Expected %v, got %v", bfs.ErrNotFound, err)
+		}
+
+		obj, err := bucket.Open(ctx, "path/to/first.txt")
+		assertNoError(t, err)
+
+		data := make([]byte, 100)
+		sz, err := obj.Read(data)
+		assertNoError(t, err)
+
+		if exp := 8; exp != sz {
+			t.Errorf("Expected %v, got %v", exp, sz)
+		}
+		if exp, got := "TESTDATA", string(data[:sz]); exp != got {
+			t.Errorf("Expected %v, got %v", exp, sz)
+		}
+
+		assertNoError(t, obj.Close())
+		assertNoError(t, bucket.Remove(ctx, "path/to/first.txt"))
+	})
+
+	t.Run("removes", func(t *testing.T) {
+		writeTestData(t, bucket, "path/to/first.txt")
+		assertNumEntries(t, bucket, "**", 1)
+
+		assertNoError(t, bucket.Remove(ctx, "path/to/first.txt"))
+		assertNumEntries(t, bucket, "**", 0)
+
+		assertNoError(t, bucket.Remove(ctx, "missing.txt"))
+	})
+
+	t.Run("copies", func(t *testing.T) {
+		copier, ok := bucket.(interface {
+			Copy(context.Context, string, string) error
 		})
+		if !ok {
+			t.Skip("Copy is not supported")
+		}
 
-		ginkgo.It("should read", func() {
-			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
+		writeTestData(t, bucket, "path/to/src.txt")
+		assertNumEntries(t, bucket, "**", 1)
+		assertNoError(t, copier.Copy(ctx, "path/to/src.txt", "path/to/dst.txt"))
+		assertNumEntries(t, bucket, "**", 2)
 
-			_, err := subject.Open(ctx, "path/to/missing")
-			Ω.Expect(err).To(Ω.Equal(bfs.ErrNotFound))
+		info, err := bucket.Head(ctx, "path/to/dst.txt")
+		assertNoError(t, err)
 
-			obj, err := subject.Open(ctx, "path/to/first.txt")
-			Ω.Expect(err).NotTo(Ω.HaveOccurred())
+		if exp, got := "path/to/dst.txt", info.Name; exp != got {
+			t.Errorf("Expected %v, got %v", exp, got)
+		}
+		if exp, got := int64(8), info.Size; exp != got {
+			t.Errorf("Expected %v, got %v", exp, got)
+		}
+		if exp, got := time.Now(), info.ModTime; exp.Sub(got) > time.Minute {
+			t.Errorf("Expected %v (±1m), got %v", exp, got)
+		}
 
-			data := make([]byte, 100)
-			Ω.Expect(obj.Read(data)).To(Ω.Equal(8))
-			Ω.Expect(string(data[:8])).To(Ω.Equal("TESTDATA"))
-			Ω.Expect(obj.Close()).To(Ω.Succeed())
-		})
-
-		ginkgo.It("should remove", func() {
-			Ω.Expect(writeTestData(subject, "path/to/first.txt")).To(Ω.Succeed())
-
-			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(1)))
-			Ω.Expect(subject.Remove(ctx, "path/to/first.txt")).To(Ω.Succeed())
-			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.BeEmpty()))
-
-			Ω.Expect(subject.Remove(ctx, "missing")).To(Ω.Succeed())
-		})
-
-		ginkgo.It("should copy", func() {
-			copier, ok := subject.(interface {
-				Copy(context.Context, string, string) error
-			})
-			if !ok {
-				ginkgo.Skip("test is disabled")
-			}
-
-			Ω.Expect(writeTestData(subject, "path/to/src.txt")).To(Ω.Succeed())
-
-			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(1)))
-			Ω.Expect(copier.Copy(ctx, "path/to/src.txt", "path/to/dst.txt")).To(Ω.Succeed())
-			Ω.Expect(subject.Glob(ctx, "*/*/*")).To(whenDrained(Ω.HaveLen(2)))
-
-			info, err := subject.Head(ctx, "path/to/dst.txt")
-			Ω.Expect(err).NotTo(Ω.HaveOccurred())
-			Ω.Expect(info.Name).To(Ω.Equal("path/to/dst.txt"))
-			Ω.Expect(info.Size).To(Ω.Equal(int64(8)))
-			Ω.Expect(info.ModTime).To(Ω.BeTemporally("~", time.Now(), 5*time.Second))
-		})
-	}
-}
-
-func writeTestData(bucket bfs.Bucket, name string) error {
-	return bfs.WriteObject(context.Background(), bucket, name, []byte("TESTDATA"), &bfs.WriteOptions{
-		Metadata:    bfs.Metadata{"CuSt0m_key": "VaLu3"},
-		ContentType: "text/plain",
+		assertNoError(t, bucket.Remove(ctx, "path/to/src.txt"))
+		assertNoError(t, bucket.Remove(ctx, "path/to/dst.txt"))
 	})
 }
 
-func whenDrained(m Ω.OmegaMatcher) Ω.OmegaMatcher {
-	return Ω.WithTransform(func(iter bfs.Iterator) []string {
-		defer iter.Close()
+func Readonly(t *testing.T, bucket bfs.Bucket) {
+	t.Run("globs lots of files", func(t *testing.T) {
+		const numReadonlySamples = 2121
 
-		var entries []string
-		for iter.Next() {
-			entries = append(entries, iter.Name())
+		if exp, got := numReadonlySamples, len(glob(t, bucket, "*/*")); exp != got {
+			t.Errorf("Expected %v, got %v", exp, got)
 		}
-		return entries
-	}, m)
+		if exp, got := numReadonlySamples, len(glob(t, bucket, "**")); exp != got {
+			t.Errorf("Expected %v, got %v", exp, got)
+		}
+	})
+}
+
+// ----------------------------------------------------------------------------
+
+func assertNumEntries(t *testing.T, bucket bfs.Bucket, pat string, exp int) {
+	t.Helper()
+
+	if got := glob(t, bucket, pat); len(got) != exp {
+		t.Errorf("Expected %d entries, got %d - %v", exp, len(got), got)
+	}
+}
+
+func assertNoError(t *testing.T, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+}
+
+func assertError(t *testing.T, err error) {
+	t.Helper()
+
+	if err == nil {
+		t.Fatal("Expected error, but got none")
+	}
+}
+
+func collect(iter bfs.Iterator) (entries []string) {
+	for iter.Next() {
+		entries = append(entries, iter.Name())
+	}
+	return entries
+}
+
+func glob(t *testing.T, bucket bfs.Bucket, pat string) []string {
+	t.Helper()
+
+	iter, err := bucket.Glob(context.Background(), pat)
+	assertNoError(t, err)
+	defer iter.Close()
+
+	return collect(iter)
+}
+
+func writeTestData(t *testing.T, bucket bfs.Bucket, name string) {
+	t.Helper()
+
+	assertNoError(t, bfs.WriteObject(context.Background(), bucket, name, []byte("TESTDATA"), &bfs.WriteOptions{
+		Metadata:    bfs.Metadata{"CuSt0m_key": "VaLu3"},
+		ContentType: "text/plain",
+	}))
 }

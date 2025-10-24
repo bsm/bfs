@@ -2,53 +2,83 @@ package bfs_test
 
 import (
 	"context"
+	"errors"
 	"io"
+	"testing"
 
 	"github.com/bsm/bfs"
-	. "github.com/bsm/ginkgo/v2"
-	. "github.com/bsm/gomega"
 )
 
-var _ = Describe("Object", func() {
-	var subject *bfs.Object
-	var ctx = context.Background()
+func TestObject(t *testing.T) {
+	ctx := context.Background()
+	obj, err := bfs.NewObject(ctx, "mem:///path/to/file.txt")
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
 
-	BeforeEach(func() {
-		var err error
-		subject, err = bfs.NewObject(ctx, "mem:///path/to/file.txt")
-		Expect(err).NotTo(HaveOccurred())
+	t.Run("name", func(t *testing.T) {
+		if exp, got := "path/to/file.txt", obj.Name(); exp != got {
+			t.Errorf("Expected %q, got %q", exp, got)
+		}
 	})
 
-	It("should have a name", func() {
-		Expect(subject.Name()).To(Equal("path/to/file.txt"))
+	t.Run("not found", func(t *testing.T) {
+		if _, err := obj.Head(ctx); !errors.Is(err, bfs.ErrNotFound) {
+			t.Errorf("Expected %v, got %v", bfs.ErrNotFound, err)
+		}
+
+		if _, err := obj.Open(ctx); !errors.Is(err, bfs.ErrNotFound) {
+			t.Errorf("Expected %v, got %v", bfs.ErrNotFound, err)
+		}
 	})
 
-	It("should head/read/write", func() {
-		_, err := subject.Head(ctx)
-		Expect(err).To(Equal(bfs.ErrNotFound))
-
-		_, err = subject.Open(ctx)
-		Expect(err).To(Equal(bfs.ErrNotFound))
-
-		w, err := subject.Create(ctx, nil)
-		Expect(err).ToNot(HaveOccurred())
+	t.Run("CRUD", func(t *testing.T) {
+		w, err := obj.Create(ctx, nil)
+		if err != nil {
+			t.Fatal("Unexpected error", err)
+		}
 		defer w.Discard()
 
-		Expect(w.Write([]byte("TESTDATA"))).To(Equal(8))
-		Expect(w.Commit()).To(Succeed())
+		if n, err := w.Write([]byte("TESTDATA")); err != nil {
+			t.Fatal("Unexpected error", err)
+		} else if n != 8 {
+			t.Errorf("Expected %v, got %v", 8, n)
+		}
 
-		i, err := subject.Head(ctx)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(i.Size).To(Equal(int64(8)))
-		Expect(i.Name).To(Equal("path/to/file.txt"))
+		if err := w.Commit(); err != nil {
+			t.Fatal("Unexpected error", err)
+		}
 
-		r, err := subject.Open(ctx)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(io.ReadAll(r)).To(Equal([]byte("TESTDATA")))
-		Expect(r.Close()).To(Succeed())
+		if i, err := obj.Head(ctx); err != nil {
+			t.Fatal("Unexpected error", err)
+		} else if i.Size != 8 {
+			t.Errorf("Expected %v, got %v", 8, i.Size)
+		} else if i.Name != obj.Name() {
+			t.Errorf("Expected %v, got %v", obj.Name(), i.Name)
+		}
 
-		Expect(subject.Remove(ctx)).To(Succeed())
-		_, err = subject.Head(ctx)
-		Expect(err).To(Equal(bfs.ErrNotFound))
+		r, err := obj.Open(ctx)
+		if err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+		defer r.Close()
+
+		if data, err := io.ReadAll(r); err != nil {
+			t.Fatal("Unexpected error", err)
+		} else if exp, got := "TESTDATA", string(data); exp != got {
+			t.Errorf("Expected %q, got %q", exp, got)
+		}
+
+		if err := r.Close(); err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+
+		if err := obj.Remove(ctx); err != nil {
+			t.Fatal("Unexpected error", err)
+		}
+
+		if _, err := obj.Head(ctx); !errors.Is(err, bfs.ErrNotFound) {
+			t.Errorf("Expected %v, got %v", bfs.ErrNotFound, err)
+		}
 	})
-})
+}

@@ -2,38 +2,39 @@ package bfs_test
 
 import (
 	"context"
+	"reflect"
+	"testing"
 
 	"github.com/bsm/bfs"
-	. "github.com/bsm/ginkgo/v2"
-	. "github.com/bsm/gomega"
 )
 
-var _ = Describe("Helpers", func() {
-	var bucket *bfs.InMem
-	var ctx = context.Background()
+func TestWriteObject(t *testing.T) {
+	ctx := context.Background()
+	bucket := bfs.NewInMem()
 
-	BeforeEach(func() {
-		bucket = bfs.NewInMem()
-	})
+	if err := bfs.WriteObject(ctx, bucket, "path/to/file", []byte("testdata"), nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
 
-	It("should write objects", func() {
-		err := bfs.WriteObject(ctx, bucket, "path/to/file", []byte("testdata"), nil)
-		Expect(err).NotTo(HaveOccurred())
+	exp := map[string]int64{"path/to/file": 8}
+	if got := bucket.ObjectSizes(); !reflect.DeepEqual(exp, got) {
+		t.Errorf("Expected %#v, got %#v", exp, got)
+	}
+}
 
-		Expect(bucket.ObjectSizes()).
-			To(HaveKeyWithValue("path/to/file", int64(8)))
-	})
+func TestCopyObject(t *testing.T) {
+	ctx := context.Background()
+	bucket := bfs.NewInMem()
 
-	It("should copy objects", func() {
-		err := bfs.WriteObject(ctx, bucket, "src.txt", []byte("testdata"), nil)
-		Expect(err).NotTo(HaveOccurred())
+	if err := bfs.WriteObject(ctx, bucket, "src.txt", []byte("testdata"), nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+	if err := bfs.CopyObject(ctx, bucket, "src.txt", "dst.txt", nil); err != nil {
+		t.Fatal("Unexpected error", err)
+	}
 
-		err = bfs.CopyObject(ctx, bucket, "src.txt", "dst.txt", nil)
-		Expect(err).NotTo(HaveOccurred())
-
-		Expect(bucket.ObjectSizes()).
-			To(HaveKeyWithValue("src.txt", int64(8)))
-		Expect(bucket.ObjectSizes()).
-			To(HaveKeyWithValue("dst.txt", int64(8)))
-	})
-})
+	exp := map[string]int64{"src.txt": 8, "dst.txt": 8}
+	if got := bucket.ObjectSizes(); !reflect.DeepEqual(exp, got) {
+		t.Errorf("Expected %#v, got %#v", exp, got)
+	}
+}

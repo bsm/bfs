@@ -2,37 +2,23 @@ package bfsfs_test
 
 import (
 	"os"
+	"testing"
 
 	"github.com/bsm/bfs/bfsfs"
 	"github.com/bsm/bfs/testdata/lint"
-
-	. "github.com/bsm/ginkgo/v2"
-	. "github.com/bsm/gomega"
 )
 
-var _ = Describe("Bucket", func() {
-	var dir string
-	var opts lint.Options
+func Test(t *testing.T) {
+	dir, err := os.MkdirTemp("", "bfsfs")
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+	defer os.RemoveAll(dir)
 
-	BeforeEach(func() {
-		var err error
+	bucket, err := bfsfs.New(dir, "")
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
 
-		dir, err = os.MkdirTemp("", "bfsfs")
-		Expect(err).NotTo(HaveOccurred())
-
-		subject, err := bfsfs.New(dir, "")
-		Expect(err).NotTo(HaveOccurred())
-
-		opts = lint.Options{
-			Subject: subject,
-		}
-	})
-
-	AfterEach(func() {
-		if dir != "" {
-			Expect(os.RemoveAll(dir)).To(Succeed())
-		}
-	})
-
-	Context("defaults", lint.Lint(&opts))
-})
+	lint.Common(t, bucket, lint.Supports{})
+}

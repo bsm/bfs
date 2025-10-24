@@ -237,13 +237,14 @@ func (b *bucket) globDir(ctx context.Context, pattern string, dir string, subdir
 	for _, ent := range entries {
 
 		ent.Name = path.Join(dir, ent.Name)
-		if ent.Type == ftp.EntryTypeFile {
+		switch ent.Type {
+		case ftp.EntryTypeFile:
 			if ok, err := doublestar.Match(pattern, ent.Name); err != nil {
 				return nil, subdirs, err
 			} else if ok {
 				files = append(files, ent)
 			}
-		} else if ent.Type == ftp.EntryTypeFolder {
+		case ftp.EntryTypeFolder:
 			subdirs = append(subdirs, ent.Name)
 		}
 	}
@@ -285,7 +286,7 @@ func (w *writer) Discard() error {
 		defer os.Remove(fname)
 
 		// close tempfile
-		err = w.File.Close()
+		err = w.Close()
 	})
 	return err
 }
@@ -298,7 +299,7 @@ func (w *writer) Commit() error {
 		defer os.Remove(fname)
 
 		// close tempfile, check context
-		if err = w.File.Close(); err != nil {
+		if err = w.Close(); err != nil {
 			return
 		} else if err = w.ctx.Err(); err != nil {
 			return
