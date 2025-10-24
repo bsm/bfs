@@ -14,8 +14,7 @@ import (
 
 // bucket emulates bfs.Bucket behaviour for local file system.
 type bucket struct {
-	root *os.Root
-	// root   string
+	root   *os.Root
 	tmpDir string
 }
 
@@ -33,7 +32,7 @@ func New(root, tmpDir string) (bfs.Bucket, error) {
 	}
 
 	return &bucket{
-		root:   rootFS, // root should always have trailing slash to trim file names properly
+		root:   rootFS,
 		tmpDir: tmpDir,
 	}, nil
 }
