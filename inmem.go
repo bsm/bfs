@@ -86,6 +86,21 @@ func (b *InMem) Remove(_ context.Context, name string) error {
 	return nil
 }
 
+// RemoveAll implements Bucket extension.
+func (b *InMem) RemoveAll(_ context.Context, pattern string) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	for key := range b.objects {
+		if ok, err := doublestar.Match(pattern, key); err != nil {
+			return err
+		} else if ok {
+			delete(b.objects, key)
+		}
+	}
+	return nil
+}
+
 // ObjectSizes return a map of object sizes by name
 func (b *InMem) ObjectSizes() map[string]int64 {
 	b.mu.RLock()

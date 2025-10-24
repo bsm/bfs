@@ -20,5 +20,7 @@ func Test(t *testing.T) {
 		t.Fatal("Unexpected error", err)
 	}
 
-	lint.Common(t, bucket, lint.Supports{})
+	support := lint.Supports{}
+	lint.Common(t, bucket, support)
+	lint.Slow(t, bucket, support)
 }

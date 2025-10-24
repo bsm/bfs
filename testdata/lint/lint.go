@@ -3,6 +3,8 @@ package lint
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -161,7 +163,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 			Copy(context.Context, string, string) error
 		})
 		if !ok {
-			t.Skip("Copy is not supported")
+			t.Skip("Copy is not natively supported")
 		}
 
 		writeTestData(t, bucket, "path/to/src.txt")
@@ -184,19 +186,56 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 
 		assertNoError(t, bfs.RemoveAll(ctx, bucket, "**"))
 	})
+
+	t.Run("removes all", func(t *testing.T) {
+		remover, ok := bucket.(interface {
+			RemoveAll(context.Context, string) error
+		})
+		if !ok {
+			t.Skip("RemoveAll is not natively supported")
+		}
+
+		writeTestData(t, bucket, "a/b.txt")
+		writeTestData(t, bucket, "a/b/c.txt")
+		writeTestData(t, bucket, "d.txt")
+		writeTestData(t, bucket, "e/f.txt")
+		assertNumEntries(t, bucket, "**", 4)
+
+		assertNoError(t, remover.RemoveAll(ctx, "a/**"))
+		if exp, got := []string{"d.txt", "e/f.txt"}, glob(t, bucket, "**"); !reflect.DeepEqual(exp, got) {
+			t.Errorf("Expected %#v, got %#v", exp, got)
+		}
+
+		assertNoError(t, remover.RemoveAll(ctx, "**"))
+		assertNumEntries(t, bucket, "**", 0)
+	})
 }
 
-func Readonly(t *testing.T, bucket bfs.Bucket) {
-	t.Run("globs lots of files", func(t *testing.T) {
-		const numReadonlySamples = 2121
+func Slow(t *testing.T, bucket bfs.Bucket, _ Supports) {
+	const numFiles = 2121
+	ctx := context.Background()
 
-		if exp, got := numReadonlySamples, len(glob(t, bucket, "*/*")); exp != got {
+	// generate seeds
+	rnd := rand.New(rand.NewSource(33))
+	char := func() rune { return rune(97 + rnd.Intn(26)) }
+
+	for i := 0; i < numFiles; i++ {
+		name := fmt.Sprintf("%c/%c%c%c%c.txt", char(), char(), char(), char(), char())
+		w, err := bucket.Create(ctx, name, nil)
+		assertNoError(t, err)
+		assertNoError(t, w.Commit())
+	}
+
+	t.Run("globs many files", func(t *testing.T) {
+		if exp, got := numFiles, len(glob(t, bucket, "*/*")); exp != got {
 			t.Errorf("Expected %v, got %v", exp, got)
 		}
-		if exp, got := numReadonlySamples, len(glob(t, bucket, "**")); exp != got {
+		if exp, got := numFiles, len(glob(t, bucket, "**")); exp != got {
 			t.Errorf("Expected %v, got %v", exp, got)
 		}
 	})
+
+	assertNoError(t, bfs.RemoveAll(ctx, bucket, "**"))
 }
 
 // ----------------------------------------------------------------------------

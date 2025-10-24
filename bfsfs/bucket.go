@@ -33,7 +33,7 @@ func New(root, tmpDir string) (bfs.Bucket, error) {
 	}, nil
 }
 
-// Glob lists the files mathing a glob pattern.
+// Glob lists the files matching a glob pattern.
 func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
 	if pattern == "" { // would return just current dir
 		return newIterator(nil), nil
@@ -97,6 +97,29 @@ func (b *bucket) Remove(ctx context.Context, name string) error {
 	err := os.Remove(b.fullPath(name))
 	if err != nil && !os.IsNotExist(err) {
 		return err
+	}
+	return nil
+}
+
+// RemoveAll removes all files matching a glob pattern.
+func (b *bucket) RemoveAll(ctx context.Context, pattern string) error {
+	if pattern == "" { // does not delete anything
+		return nil
+	}
+
+	matches, err := doublestar.Glob(b.fullPath(pattern))
+	if err != nil {
+		return normError(err)
+	}
+
+	for _, match := range matches {
+		if fi, err := os.Stat(match); err != nil {
+			return normError(err)
+		} else if fi.Mode().IsRegular() {
+			if err := os.Remove(match); err != nil {
+				return normError(err)
+			}
+		}
 	}
 	return nil
 }
