@@ -154,10 +154,6 @@ type Iterator interface {
 	Close() error
 }
 
-type supportsCopying interface {
-	Copy(context.Context, string, string) error
-}
-
 // --------------------------------------------------------------------
 
 var (
