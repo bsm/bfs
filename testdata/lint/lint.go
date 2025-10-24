@@ -32,7 +32,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 		}
 
 		assertError(t, w.Discard())
-		assertNoError(t, bucket.Remove(ctx, "blank.txt"))
+		assertNoError(t, bfs.RemoveAll(ctx, bucket, "**"))
 	})
 
 	t.Run("aborts writes on discard", func(t *testing.T) {
@@ -83,9 +83,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 		assertNumEntries(t, bucket, "path/*/[ft]*.json", 1)
 		assertNumEntries(t, bucket, "**", 3)
 
-		assertNoError(t, bucket.Remove(ctx, "path/a/first.txt"))
-		assertNoError(t, bucket.Remove(ctx, "path/b/second.txt"))
-		assertNoError(t, bucket.Remove(ctx, "path/a/third.json"))
+		assertNoError(t, bfs.RemoveAll(ctx, bucket, "**"))
 	})
 
 	t.Run("heads", func(t *testing.T) {
@@ -120,7 +118,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 			}
 		}
 
-		assertNoError(t, bucket.Remove(ctx, "path/to/first.txt"))
+		assertNoError(t, bfs.RemoveAll(ctx, bucket, "**"))
 	})
 
 	t.Run("reads", func(t *testing.T) {
@@ -145,7 +143,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 		}
 
 		assertNoError(t, obj.Close())
-		assertNoError(t, bucket.Remove(ctx, "path/to/first.txt"))
+		assertNoError(t, bfs.RemoveAll(ctx, bucket, "**"))
 	})
 
 	t.Run("removes", func(t *testing.T) {
@@ -184,8 +182,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 			t.Errorf("Expected %v (±1m), got %v", exp, got)
 		}
 
-		assertNoError(t, bucket.Remove(ctx, "path/to/src.txt"))
-		assertNoError(t, bucket.Remove(ctx, "path/to/dst.txt"))
+		assertNoError(t, bfs.RemoveAll(ctx, bucket, "**"))
 	})
 }
 
