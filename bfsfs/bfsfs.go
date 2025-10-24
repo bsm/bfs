@@ -57,19 +57,22 @@ type atomicFile struct {
 	*os.File
 
 	ctx  context.Context
+	root *os.Root
 	name string
 }
 
 // openAtomicFile opens atomic file for writing.
 // tmpDir defaults to standard temporary dir if blank.
-func openAtomicFile(ctx context.Context, name string, tmpDir string) (*atomicFile, error) {
-	f, err := os.CreateTemp(tmpDir, "bfsfs")
+func openAtomicFile(ctx context.Context, root *os.Root, name, tmpDir string) (*atomicFile, error) {
+	f, err := os.CreateTemp(tmpDir, "github_com__bsm__bfs__bfsfs")
 	if err != nil {
 		return nil, err
 	}
+
 	return &atomicFile{
 		File: f,
 		ctx:  ctx,
+		root: root,
 		name: name,
 	}, nil
 }
@@ -95,11 +98,11 @@ func (f *atomicFile) Commit() error {
 	default:
 	}
 
-	if err := os.MkdirAll(filepath.Dir(f.name), 0777); err != nil {
+	if err := f.root.MkdirAll(filepath.Dir(f.name), 0777); err != nil {
 		return err
 	}
 
-	return os.Rename(f.Name(), f.name)
+	return os.Rename(f.Name(), filepath.Join(f.root.Name(), path.Clean("/"+f.name)))
 }
 
 // cleanup removes temporary file.

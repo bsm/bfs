@@ -2,19 +2,19 @@ package bfsfs
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
+	"syscall"
 
-	"github.com/bmatcuk/doublestar/v3"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/bsm/bfs"
-	"github.com/bsm/bfs/internal"
 )
 
 // bucket emulates bfs.Bucket behaviour for local file system.
 type bucket struct {
-	fsRoot string
-	root   string
+	root   *os.Root
 	tmpDir string
 }
 
@@ -26,47 +26,53 @@ func New(root, tmpDir string) (bfs.Bucket, error) {
 	}
 	root = filepath.Clean(root)
 
+	rootFS, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, err
+	}
+
 	return &bucket{
-		fsRoot: root + string(filepath.Separator), // root should always have trailing slash to trim file names properly
-		root:   filepath.ToSlash(root),
+		root:   rootFS,
 		tmpDir: tmpDir,
 	}, nil
 }
 
 // Glob lists the files matching a glob pattern.
-func (b *bucket) Glob(_ context.Context, pattern string) (bfs.Iterator, error) {
+func (b *bucket) Glob(ctx context.Context, pattern string) (bfs.Iterator, error) {
 	if pattern == "" { // would return just current dir
 		return newIterator(nil), nil
 	}
 
-	matches, err := doublestar.Glob(b.fullPath(pattern))
+	files := make([]file, 0)
+	err := doublestar.GlobWalk(b.root.FS(), pattern, func(match string, d fs.DirEntry) error {
+		fi, err := b.root.Stat(match)
+		if err != nil {
+			return normError(err)
+		}
+
+		files = append(files, file{
+			name:    filepath.ToSlash(match),
+			size:    fi.Size(),
+			modTime: fi.ModTime(),
+		})
+		return nil
+	}, doublestar.WithFilesOnly(), doublestar.WithNoFollow())
 	if err != nil {
 		return nil, normError(err)
 	}
 
-	files := make([]file, 0, len(matches))
-	for _, match := range matches {
-		if fi, err := os.Stat(match); err != nil {
-			return nil, normError(err)
-		} else if fi.Mode().IsRegular() {
-			fsPath := strings.TrimPrefix(match, b.fsRoot) // filesystem path (with OS-specific separators)
-			name := filepath.ToSlash(fsPath)
-			files = append(files, file{
-				name:    name,
-				size:    fi.Size(),
-				modTime: fi.ModTime(),
-			})
-		}
-	}
 	return newIterator(files), nil
 }
 
 // Head implements bfs.Bucket
 func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
-	fi, err := os.Stat(b.fullPath(name))
+	fi, err := b.root.Stat(filepath.FromSlash(name))
 	if err != nil {
 		return nil, normError(err)
+	} else if !fi.Mode().IsRegular() {
+		return nil, bfs.ErrNotFound
 	}
+
 	return &bfs.MetaInfo{
 		Name:    name,
 		Size:    fi.Size(),
@@ -76,16 +82,26 @@ func (b *bucket) Head(ctx context.Context, name string) (*bfs.MetaInfo, error) {
 
 // Open implements bfs.Bucket
 func (b *bucket) Open(ctx context.Context, name string) (bfs.Reader, error) {
-	f, err := os.Open(b.fullPath(name))
+	f, err := b.root.Open(filepath.FromSlash(name))
 	if err != nil {
 		return nil, normError(err)
 	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return nil, normError(err)
+	} else if !fi.Mode().IsRegular() {
+		_ = f.Close()
+		return nil, bfs.ErrNotFound
+	}
+
 	return f, nil
 }
 
 // Create implements bfs.Bucket
 func (b *bucket) Create(ctx context.Context, name string, _ *bfs.WriteOptions) (bfs.Writer, error) {
-	f, err := openAtomicFile(ctx, b.fullPath(name), b.tmpDir)
+	f, err := openAtomicFile(ctx, b.root, filepath.FromSlash(name), b.tmpDir)
 	if err != nil {
 		return nil, normError(err)
 	}
@@ -94,9 +110,11 @@ func (b *bucket) Create(ctx context.Context, name string, _ *bfs.WriteOptions) (
 
 // Remove implements bfs.Bucket
 func (b *bucket) Remove(ctx context.Context, name string) error {
-	err := os.Remove(b.fullPath(name))
-	if err != nil && !os.IsNotExist(err) {
-		return err
+	err := b.root.Remove(filepath.FromSlash(name))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		if pe := new(fs.PathError); !errors.As(err, &pe) || pe.Err != syscall.ENOTEMPTY {
+			return err
+		}
 	}
 	return nil
 }
@@ -107,19 +125,11 @@ func (b *bucket) RemoveAll(ctx context.Context, pattern string) error {
 		return nil
 	}
 
-	matches, err := doublestar.Glob(b.fullPath(pattern))
+	err := doublestar.GlobWalk(b.root.FS(), pattern, func(path string, d fs.DirEntry) error {
+		return b.root.Remove(path)
+	}, doublestar.WithFilesOnly(), doublestar.WithNoFollow())
 	if err != nil {
 		return normError(err)
-	}
-
-	for _, match := range matches {
-		if fi, err := os.Stat(match); err != nil {
-			return normError(err)
-		} else if fi.Mode().IsRegular() {
-			if err := os.Remove(match); err != nil {
-				return normError(err)
-			}
-		}
 	}
 	return nil
 }
@@ -127,8 +137,4 @@ func (b *bucket) RemoveAll(ctx context.Context, pattern string) error {
 // Close implements bfs.Bucket
 func (b *bucket) Close() error {
 	return nil // noop
-}
-
-func (b *bucket) fullPath(name string) string {
-	return filepath.FromSlash(internal.WithinNamespace(b.root, filepath.ToSlash(name)))
 }
