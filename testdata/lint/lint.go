@@ -119,7 +119,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 		}
 
 		if supports.ContentType {
-			if exp, got := "path/to/first.txt", info.ContentType; exp != got {
+			if exp, got := "text/plain", info.ContentType; exp != got {
 				t.Errorf("Expected %v, got %v", exp, got)
 			}
 		}
