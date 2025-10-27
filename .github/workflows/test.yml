@@ -72,15 +72,15 @@ jobs:
         ports:
           - 4566:4566
         volumes:
-          - ${{ github.workspace }}/tmp/init-s3.py:/etc/localstack/init/ready.d/init-s3.py
+          - /tmp/init-s3.py:/etc/localstack/init/ready.d/init-s3.py
         options: --name localstack
     steps:
       - name: Checkout
         uses: actions/checkout@v5
       - name: Update S3 service
         run: |
-          mkdir -p ${{ github.workspace }}/tmp
-          cp ./bfss3/testdata/init-s3.py ${{ github.workspace }}/tmp/init-s3.py
+          mkdir -p /tmp
+          cp ./bfss3/testdata/init-s3.py /tmp/init-s3.py
       - name: Restart S3 service
         uses: docker://docker
         with:
