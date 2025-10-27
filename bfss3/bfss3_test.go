@@ -13,6 +13,7 @@ import (
 func Test(t *testing.T) {
 	cfg, err := config.LoadDefaultConfig(t.Context(),
 		config.WithBaseEndpoint("http://127.0.0.1:4566"),
+		config.WithRegion("us-east-1"),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
 			Value: aws.Credentials{
 				AccessKeyID:     "test",

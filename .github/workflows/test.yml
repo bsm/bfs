@@ -76,10 +76,6 @@ jobs:
       - uses: actions/checkout@v5
       - run: |
           python3 ./bfss3/testdata/init-s3.py
-      - name: Update S3 service
-        run: |
-          mkdir -p /tmp
-          cp ./bfss3/testdata/init-s3.py /tmp/init-s3.py
       - uses: bsm/misc/.github/actions/test-go@main
         with:
           working-directory: bfss3
