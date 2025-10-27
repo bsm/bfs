@@ -9,7 +9,7 @@
 //	)
 //
 //	func main() {
-//	  ctx := context.Background()
+//	  ctx := context.TODO()
 //	  b, _ := bfs.Connect(ctx, "ssh://user:pass@hostname:22/path/to/root?tmpdir=%2Fcustom%2Ftmp")
 //	  f, _ := b.Open(ctx, "file/within/root.txt")
 //	  ...

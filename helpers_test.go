@@ -1,7 +1,6 @@
 package bfs_test
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -9,7 +8,7 @@ import (
 )
 
 func TestWriteObject(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	bucket := bfs.NewInMem()
 
 	if err := bfs.WriteObject(ctx, bucket, "path/to/file", []byte("testdata"), nil); err != nil {
@@ -23,7 +22,7 @@ func TestWriteObject(t *testing.T) {
 }
 
 func TestCopyObject(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	bucket := bfs.NewInMem()
 
 	if err := bfs.WriteObject(ctx, bucket, "src.txt", []byte("testdata"), nil); err != nil {
@@ -40,7 +39,7 @@ func TestCopyObject(t *testing.T) {
 }
 
 func TestRemoveAll(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	bucket := bfs.NewInMem()
 
 	if err := bfs.WriteObject(ctx, bucket, "a/b.txt", []byte("testdata"), nil); err != nil {

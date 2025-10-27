@@ -9,7 +9,7 @@
 //	)
 //
 //	func main() {
-//	  ctx := context.Background()
+//	  ctx := context.TODO()
 //	  b, _ := bfs.Connect(ctx, "s3://bucket/a&acl=MY_ACL")
 //	  f, _ := b.Open(ctx, "b/c.txt") // opens s3://bucket/a/b/c.txt
 //	  ...

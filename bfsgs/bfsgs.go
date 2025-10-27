@@ -9,7 +9,7 @@
 //	)
 //
 //	func main() {
-//	  ctx := context.Background()
+//	  ctx := context.TODO()
 //	  b, _ := bfs.Connect(ctx, "gs://bucket/a")
 //	  f, _ := b.Open(ctx, "b/c.txt") // opens gs://bucket/a/b/c.txt
 //	  ...

@@ -1,7 +1,6 @@
 package bfss3_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,7 +11,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
+	cfg, err := config.LoadDefaultConfig(t.Context(),
 		config.WithBaseEndpoint("http://127.0.0.1:4566"),
 		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
 			Value: aws.Credentials{
@@ -24,8 +23,7 @@ func Test(t *testing.T) {
 		t.Fatal("Unexpected error", err)
 	}
 
-	ctx := context.Background()
-	bucket, err := bfss3.New(ctx, "bfs-s3-test", &bfss3.Config{AWS: &cfg})
+	bucket, err := bfss3.New(t.Context(), "bfs-s3-test", &bfss3.Config{AWS: &cfg})
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}

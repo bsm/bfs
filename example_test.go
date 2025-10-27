@@ -9,7 +9,7 @@ import (
 )
 
 func ExampleInMem() {
-	ctx := context.Background()
+	ctx := context.TODO()
 	bucket := bfs.NewInMem()
 
 	// Write object
