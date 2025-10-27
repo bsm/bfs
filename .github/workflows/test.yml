@@ -69,32 +69,20 @@ jobs:
         image: localstack/localstack:stable
         env:
           LS_LOG: warn
+          SERVICES: s3
         ports:
           - 4566:4566
-        volumes:
-          - /tmp/init-s3.py:/etc/localstack/init/ready.d/init-s3.py
-        options: --name localstack
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+      - run: |
+          python3 ./bfss3/testdata/init-s3.py
       - name: Update S3 service
         run: |
           mkdir -p /tmp
           cp ./bfss3/testdata/init-s3.py /tmp/init-s3.py
-      - name: Restart S3 service
-        uses: docker://docker
+      - uses: bsm/misc/.github/actions/test-go@main
         with:
-          args: docker restart localstack
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: bfss3/go.mod
-          cache-dependency-path: bfss3/go.sum
-      - name: Run tests
-        shell: bash
-        working-directory: bfss3
-        run: |
-          go test ./...
+          working-directory: bfss3
 
   # gs:
   #   uses: bsm/misc/.github/workflows/test-go.yaml@main
