@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -289,6 +290,7 @@ func collect(iter bfs.Iterator) (entries []string) {
 	for iter.Next() {
 		entries = append(entries, iter.Name())
 	}
+	slices.Sort(entries)
 	return entries
 }
 
