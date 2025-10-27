@@ -1,7 +1,6 @@
 package bfs_test
 
 import (
-	"context"
 	"errors"
 	"io"
 	"testing"
@@ -10,7 +9,7 @@ import (
 )
 
 func TestObject(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	obj, err := bfs.NewObject(ctx, "mem:///path/to/file.txt")
 	if err != nil {
 		t.Fatal("Unexpected error", err)

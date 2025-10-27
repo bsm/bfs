@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -18,7 +19,7 @@ type Supports struct {
 }
 
 func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("writes", func(t *testing.T) {
 		w, err := bucket.Create(ctx, "blank.txt", nil)
@@ -226,7 +227,7 @@ func Common(t *testing.T, bucket bfs.Bucket, supports Supports) {
 
 func Slow(t *testing.T, bucket bfs.Bucket, _ Supports) {
 	const numFiles = 2121
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// generate seeds
 	rnd := rand.New(rand.NewSource(33))
@@ -289,13 +290,14 @@ func collect(iter bfs.Iterator) (entries []string) {
 	for iter.Next() {
 		entries = append(entries, iter.Name())
 	}
+	slices.Sort(entries)
 	return entries
 }
 
 func glob(t *testing.T, bucket bfs.Bucket, pat string) []string {
 	t.Helper()
 
-	iter, err := bucket.Glob(context.Background(), pat)
+	iter, err := bucket.Glob(t.Context(), pat)
 	assertNoError(t, err)
 	defer iter.Close()
 
@@ -305,7 +307,7 @@ func glob(t *testing.T, bucket bfs.Bucket, pat string) []string {
 func writeTestData(t *testing.T, bucket bfs.Bucket, name string) {
 	t.Helper()
 
-	assertNoError(t, bfs.WriteObject(context.Background(), bucket, name, []byte("TESTDATA"), &bfs.WriteOptions{
+	assertNoError(t, bfs.WriteObject(t.Context(), bucket, name, []byte("TESTDATA"), &bfs.WriteOptions{
 		Metadata:    bfs.Metadata{"CuSt0m_key": "VaLu3"},
 		ContentType: "text/plain",
 	}))

@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
+	ctx := context.TODO()
 	bucket := bfs.NewInMem()
 
 	// Write object
