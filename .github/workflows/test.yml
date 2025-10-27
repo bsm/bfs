@@ -16,6 +16,7 @@ jobs:
     uses: bsm/misc/.github/workflows/test-go.yml@main
     with:
       working-directory: .
+
   ftp-lint:
     runs-on: ubuntu-latest
     steps:
@@ -36,6 +37,7 @@ jobs:
       - uses: bsm/misc/.github/actions/test-go@main
         with:
           working-directory: bfsftp
+
   scp-lint:
     runs-on: ubuntu-latest
     steps:
@@ -53,6 +55,7 @@ jobs:
       - uses: bsm/misc/.github/actions/test-go@main
         with:
           working-directory: bfsscp
+
   s3-lint:
     runs-on: ubuntu-latest
     steps:
@@ -68,14 +71,31 @@ jobs:
           LS_LOG: warn
         ports:
           - 4566:4566
-        # volumes:
-        #   - ./bfss3/testdata/init-s3.py:/etc/localstack/init/ready.d/init-s3.py
+        volumes:
+          - ${{ github.workspace }}/tmp/init-s3.py:/etc/localstack/init/ready.d/init-s3.py
+        options: --name localstack
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      # - uses: bsm/misc/.github/actions/test-go@main
-      #   with:
-      #     working-directory: bfss3
+      - name: Update S3 service
+        run: |
+          mkdir -p ${{ github.workspace }}/tmp
+          cp ./bfss3/testdata/init-s3.py ${{ github.workspace }}/tmp/init-s3.py
+      - name: Restart S3 service
+        uses: docker://docker
+        with:
+          args: docker restart localstack
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: bfss3/go.mod
+          cache-dependency-path: bfss3/go.sum
+      - name: Run tests
+        shell: bash
+        working-directory: bfss3
+        run: |
+          go test ./...
+
   # gs:
   #   uses: bsm/misc/.github/workflows/test-go.yaml@main
   #   with:
