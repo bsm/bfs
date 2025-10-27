@@ -48,15 +48,28 @@ jobs:
       - uses: bsm/misc/.github/actions/test-go@main
         with:
           working-directory: bfsscp
+  s3-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: bsm/misc/.github/actions/lint-go@main
+        with:
+          working-directory: bfss3
+  s3-test:
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack:stable
+        env:
+          LS_LOG: warn
+        ports:
+          - 4566:4566
+        volumes:
+          - ./bfss3/testdata/init-s3.py:/etc/localstack/init/ready.d/init-s3.py
+    steps:
+      - uses: bsm/misc/.github/actions/test-go@main
+        with:
+          working-directory: bfss3
   # gs:
   #   uses: bsm/misc/.github/workflows/test-go.yaml@main
   #   with:
   #     working-directory: bfsgs
-  # s3:
-  #   uses: bsm/misc/.github/workflows/test-go.yaml@main
-  #   with:
-  #     working-directory: bfss3
-  # scp:
-  #   uses: bsm/misc/.github/workflows/test-go.yaml@main
-  #   with:
-  #     working-directory: bfsscp

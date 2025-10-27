@@ -39,7 +39,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bmatcuk/doublestar/v3"
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/bsm/bfs"
 	"github.com/bsm/bfs/internal"
 
@@ -79,6 +79,9 @@ func init() {
 		}
 		if s := query.Get("region"); s != "" {
 			opts = append(opts, config.WithRegion(s))
+		}
+		if s := query.Get("endpoint"); s != "" {
+			opts = append(opts, config.WithBaseEndpoint(s))
 		}
 		if s := query.Get("max_retries"); s != "" {
 			maxRetries, err := strconv.ParseInt(s, 10, 64)
@@ -306,7 +309,7 @@ func (w *writer) Discard() error {
 		defer os.Remove(fname)
 
 		// Close tempfile
-		err = w.File.Close()
+		err = w.Close()
 	})
 
 	return err
@@ -320,7 +323,7 @@ func (w *writer) Commit() error {
 		defer os.Remove(fname)
 
 		// Close tempfile
-		if err = w.File.Close(); err != nil {
+		if err = w.Close(); err != nil {
 			return
 		}
 

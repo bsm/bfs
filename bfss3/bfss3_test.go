@@ -2,97 +2,40 @@ package bfss3_test
 
 import (
 	"context"
-	"errors"
-	"strconv"
 	"testing"
-	"time"
-
-	"github.com/bsm/bfs"
-	"github.com/bsm/bfs/bfss3"
-	"github.com/bsm/bfs/testdata/lint"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-
-	. "github.com/bsm/ginkgo/v2"
-	. "github.com/bsm/gomega"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/bsm/bfs/bfss3"
+	"github.com/bsm/bfs/testdata/lint"
 )
 
-const bucketName = "bsm-bfs-unittest"
-
-var awsConfig aws.Config
-
-func init() {
-	c, err := config.LoadDefaultConfig(context.Background(), config.WithRegion("us-east-1"))
+func Test(t *testing.T) {
+	cfg, err := config.LoadDefaultConfig(context.TODO(),
+		config.WithBaseEndpoint("http://127.0.0.1:4566"),
+		config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+			Value: aws.Credentials{
+				AccessKeyID:     "test",
+				SecretAccessKey: "test",
+			},
+		}))
 	if err != nil {
-		panic(err)
+		t.Fatal("Unexpected error", err)
 	}
-	awsConfig = c
-}
-
-var _ = Describe("Bucket", func() {
-	var opts lint.Options
 
 	ctx := context.Background()
+	bucket, err := bfss3.New(ctx, "bfs-s3-test", &bfss3.Config{AWS: &cfg})
+	if err != nil {
+		t.Fatal("Unexpected error", err)
+	}
+	defer bucket.Close()
 
-	BeforeEach(func() {
-		prefix := "x/" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		subject, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: prefix, AWS: &awsConfig})
-		Expect(err).NotTo(HaveOccurred())
-
-		readonly, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "m/", AWS: &awsConfig})
-		Expect(err).NotTo(HaveOccurred())
-
-		opts = lint.Options{
-			Subject:  subject,
-			Readonly: readonly,
-
-			Metadata:    true,
-			ContentType: true,
-		}
+	t.Run("common", func(t *testing.T) {
+		lint.Common(t, bucket, lint.Supports{ContentType: true, Metadata: true})
 	})
 
-	Context("defaults", lint.Lint(&opts))
-})
-
-// ------------------------------------------------------------------------
-
-func TestSuite(t *testing.T) {
-	if err := sandboxCheck(); err != nil {
-		t.Skipf("skipping test, no sandbox access: %v", err)
-		return
-	}
-
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "bfs/bfss3")
+	t.Run("slow", func(t *testing.T) {
+		lint.Slow(t, bucket, lint.Supports{ContentType: true, Metadata: true})
+	})
 }
-
-func sandboxCheck() error {
-	ctx := context.Background()
-	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{AWS: &awsConfig})
-	if err != nil {
-		return err
-	}
-	defer b.Close()
-
-	if _, err := b.Head(ctx, "____"); !errors.Is(err, bfs.ErrNotFound) {
-		return err
-	}
-	return nil
-}
-
-var _ = AfterSuite(func() {
-	ctx := context.Background()
-	b, err := bfss3.New(ctx, bucketName, &bfss3.Config{Prefix: "x/", AWS: &awsConfig})
-	Expect(err).NotTo(HaveOccurred())
-	defer b.Close()
-
-	it, err := b.Glob(ctx, "**")
-	Expect(err).NotTo(HaveOccurred())
-	defer it.Close()
-
-	for it.Next() {
-		Expect(b.Remove(ctx, it.Name())).To(Succeed())
-	}
-	Expect(it.Error()).NotTo(HaveOccurred())
-})
