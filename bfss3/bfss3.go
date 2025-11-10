@@ -22,7 +22,7 @@
 //	aws_session_token      - custom AWS credentials
 //	assume_role            - specify an AWS role ARN to assume
 //	region                 - specify an AWS region
-//	endpoint               - specify an AWS role ARN to assume
+//	endpoint               - specify a custom endpoint URL
 //	use_path_style         - forces the client to use path-style URLs
 //	max_retries            - specify maximum number of retries
 //	acl                    - custom ACL, defaults to DefaultACL
