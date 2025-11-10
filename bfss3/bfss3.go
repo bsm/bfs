@@ -22,6 +22,8 @@
 //	aws_session_token      - custom AWS credentials
 //	assume_role            - specify an AWS role ARN to assume
 //	region                 - specify an AWS region
+//	endpoint               - specify a custom endpoint URL
+//	use_path_style         - forces the client to use path-style URLs
 //	max_retries            - specify maximum number of retries
 //	acl                    - custom ACL, defaults to DefaultACL
 //	sse                    - server-side-encryption algorithm
@@ -106,13 +108,20 @@ func init() {
 			)
 		}
 
+		var optFns []func(*s3.Options)
+		if s := query.Get("use_path_style"); strings.EqualFold(s, "true") {
+			optFns = append(optFns, func(o *s3.Options) {
+				o.UsePathStyle = true
+			})
+		}
+
 		return New(ctx, u.Host, &Config{
+			AWS:              &cfg,
 			Prefix:           prefix,
 			ACL:              query.Get("acl"),
 			SSE:              query.Get("sse"),
 			GrantFullControl: query.Get("grant-full-control"),
-			AWS:              &cfg,
-		})
+		}, optFns...)
 	})
 }
 
@@ -159,7 +168,7 @@ type bucket struct {
 }
 
 // New initiates an bfs.Bucket backed by S3.
-func New(ctx context.Context, name string, c *Config) (bfs.Bucket, error) {
+func New(ctx context.Context, name string, c *Config, optFns ...func(*s3.Options)) (bfs.Bucket, error) {
 	cfg := new(Config)
 	if c != nil {
 		*cfg = *c
@@ -168,7 +177,7 @@ func New(ctx context.Context, name string, c *Config) (bfs.Bucket, error) {
 		return nil, err
 	}
 
-	client := s3.NewFromConfig(*cfg.AWS)
+	client := s3.NewFromConfig(*cfg.AWS, optFns...)
 	uploader := manager.NewUploader(client)
 
 	return &bucket{
