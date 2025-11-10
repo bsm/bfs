@@ -21,10 +21,10 @@
 //	aws_secret_access_key  - custom AWS credentials
 //	aws_session_token      - custom AWS credentials
 //	assume_role            - specify an AWS role ARN to assume
+//	region                 - specify an AWS region
 //	endpoint               - specify an AWS role ARN to assume
 //	use_path_style         - forces the client to use path-style URLs
 //	max_retries            - specify maximum number of retries
-//	region                 - specify an AWS region
 //	acl                    - custom ACL, defaults to DefaultACL
 //	sse                    - server-side-encryption algorithm
 package bfss3
@@ -168,9 +168,10 @@ type bucket struct {
 }
 
 // New initiates an bfs.Bucket backed by S3.
-func New(ctx context.Context, name string, cfg *Config, optFns ...func(*s3.Options)) (bfs.Bucket, error) {
-	if cfg != nil {
-		cfg = new(Config)
+func New(ctx context.Context, name string, c *Config, optFns ...func(*s3.Options)) (bfs.Bucket, error) {
+	cfg := new(Config)
+	if c != nil {
+		*cfg = *c
 	}
 	if err := cfg.norm(ctx); err != nil {
 		return nil, err
