@@ -109,7 +109,7 @@ func init() {
 		}
 
 		var optFns []func(*s3.Options)
-		if s := query.Get("use_path_style"); strings.EqualFold(s, "true") {
+		if usePathStyle(query) {
 			optFns = append(optFns, func(o *s3.Options) {
 				o.UsePathStyle = true
 			})
@@ -494,4 +494,14 @@ func (i *iterator) fetchNextPage() error {
 		}
 	}
 	return nil
+}
+
+func usePathStyle(query url.Values) bool {
+	if s := query.Get("addressing_style"); strings.EqualFold(s, "path") {
+		return true
+	}
+	if s := query.Get("use_path_style"); strings.EqualFold(s, "true") {
+		return true
+	}
+	return false
 }
