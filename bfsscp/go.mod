@@ -1,6 +1,6 @@
 module github.com/bsm/bfs/bfsscp
 
-go 1.21
+go 1.24.0
 
 require (
 	github.com/bmatcuk/doublestar/v3 v3.0.0
@@ -10,7 +10,7 @@ require (
 	github.com/kr/fs v0.1.0
 	github.com/pkg/sftp v1.13.6
 	go.uber.org/multierr v1.11.0
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.45.0
 )
 
-require golang.org/x/sys v0.28.0 // indirect
+require golang.org/x/sys v0.38.0 // indirect
